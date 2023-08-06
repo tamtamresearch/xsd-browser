@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+{# This file is licenced under the GNU AGPLv3 or later
+   (c) 2023 David Koňařík #}
+<html lang=en>
+<head>
+    <title>XML schema: {{ main_xml_path.name }}</title>
+    <script>
+        function domElementPath(el) {
+            const path = [];
+            while(el.parentElement) {
+                if(el.tagName.toUpperCase() != "TEMPLATE" && el.dataset.name) {
+                    path.push(el.dataset.name);
+                }
+                el = el.parentElement;
+            }
+            return path;
+        }
+
+        function closestTemplateForPath(type, path) {
+            for(let i = path.length; i > 0; i--) {
+                const cutPath = path.slice(0, i);
+                const cutPathStr = cutPath.join("/");
+                const templateEl = document.querySelector(
+                    `template[data-type="${type}"][data-path="${cutPathStr}"]`);
+                if(templateEl) return templateEl;
+            }
+
+            // Path based match failed, try any name
+            return document.querySelector(
+                `template[data-type="${type}"][data-name="${path[0]}"]`);
+        }
+
+        function removeEmptyBoxes(rootEl) {
+            rootEl.querySelectorAll(".complex-type-attrs, .attribute-group")
+                .forEach(boxEl => {
+                    const isEmpty = boxEl.querySelectorAll(".attribute")
+                                        .length == 0;
+                    if(isEmpty) {
+                        boxEl.parentElement.removeChild(boxEl);
+                    }
+                });
+        }
+
+        class ReferenceElement extends HTMLElement {
+            constructor() {
+                super();
+            }
+
+            connectedCallback() {
+                if(!this.isConnected) return;
+
+                const thisPath = domElementPath(this);
+                const path = [this.getAttribute("ref"), ...thisPath];
+                const template = closestTemplateForPath(
+                    this.getAttribute("type"), path);
+                if(!template) {
+                    console.error(`No template with id ${ref}!`);
+                    return;
+                }
+                const contentEl = template.content.cloneNode(true);
+                /*contentEl.prepend(
+                    document.createComment(
+                        `Loaded ${template.dataset.path} for path ${path}`));*/
+                this.appendChild(contentEl);
+                removeEmptyBoxes(this);
+            }
+        }
+        customElements.define("xbe-ref", ReferenceElement);
+
+        function onCollapsibleElementRefToggle(detailEl) {
+            const elemName = detailEl.dataset.element;
+            const contentsEl = detailEl.querySelector(":scope > .element-contents");
+            if(detailEl.open) {
+                const refEl = document.createElement("xbe-ref");
+                refEl.setAttribute("type", "element-contents");
+                refEl.setAttribute("ref", elemName);
+                contentsEl.appendChild(refEl);
+            } else {
+                const refEl = contentsEl.querySelector(":scope > xbe-ref");
+                if(refEl) refEl.parentElement.removeChild(refEl);
+            }
+        }
+
+        function onElementFormSubmit() {
+            const element = document.getElementById("root-element-name").value;
+            window.location.hash = `#element-${element}`;
+            return false;
+        }
+
+        function setMainContent(el) {
+            const mainEl = document.querySelector("main");
+            Array.from(mainEl.children).forEach(c => mainEl.removeChild(c));
+            mainEl.appendChild(el);
+        }
+
+        function showElement(element) {
+            if(!document.querySelector(
+                `template[data-type="element-contents"][data-path="${element}"]`)) {
+                alert(`No such element: ${element}`);
+                return;
+            }
+
+            const template = document.getElementById("root-element-template");
+            const contentEl = template.content.cloneNode(true);
+
+            contentEl.querySelectorAll("xbe-ref").forEach(refEl => {
+                refEl.setAttribute("ref", element);
+            });
+            contentEl.querySelector("details").dataset.element = element;
+            contentEl.querySelector(".simple").innerText =
+                `<${element}>...</${element}>`;
+            contentEl.querySelector(".element-end").innerText =
+                `</${element}>`;
+
+            document.getElementById("root-element-name").value = element;
+            setMainContent(contentEl);
+        }
+
+        function showType(type) {
+            if(!document.querySelector(
+                `template[data-type="type-contents"][data-path="${type}"]`)) {
+                alert(`No such type: ${type}`);
+                return;
+            }
+
+            const template = document.getElementById("root-type-template");
+            const contentEl = template.content.cloneNode(true);
+
+            contentEl.querySelectorAll("xbe-ref").forEach(refEl => {
+                refEl.setAttribute("ref", type);
+            });
+
+            setMainContent(contentEl);
+        }
+
+        function showFromHash() {
+            const hash = window.location.hash.substring(1);
+            if(hash.startsWith("element-")) {
+                showElement(hash.substring(8));
+            } else if(hash.startsWith("type-")) {
+                showType(hash.substring(5));
+            }
+        }
+
+        window.addEventListener("hashchange", showFromHash);
+        window.addEventListener("DOMContentLoaded", showFromHash);
+    </script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            font-size: 12pt;
+            margin: 0;
+        }
+
+        main {
+            margin: 10px;
+        }
+
+        header {
+            background-color: lightsteelblue;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+        header h1 {
+            font-size: 20pt;
+            margin: 0;
+            color: #333;
+        }
+
+        code {
+            font-size: 12pt;
+        }
+
+        ul, ol {
+            margin: 0 4px;
+            padding-left: 16px;
+        }
+
+        xbe-ref {
+            display: contents;
+        }
+
+        .element-head, .element-end {
+            /* Make elements touch each other directly without regard for
+               whitespace. We can then set margin/padding as necessary */
+            display: flex;
+            flex-direction: row;
+        }
+
+        .element-end {
+            margin-bottom: 10px;
+        }
+
+        .element-head :last-child {
+            /* Align closing ">" */
+            align-self: end;
+        }
+
+        :is(.element-head, .element-end) .sample {
+            color: #333;
+            font-style: italic;
+        }
+
+        .element-children {
+            padding-left: 20px;
+        }
+
+        .occurs {
+            display: inline-flex;
+            align-self: end;
+            margin-left: 10px;
+            border-radius: 3px;
+            padding: 0 2px;
+            background-color: lavender;
+        }
+
+        .attribute {
+            display: flex;
+            flex-direction: row;
+            margin-left: 5px;
+        }
+
+        a.type-link {
+        }
+
+        .annotation {
+            color: gray;
+            margin-top: 0;
+            margin-bottom: 10px;
+            max-width: 800px;
+        }
+
+        .origin {
+            display: none;
+        }
+        .origin {
+            display: initial;
+            color: gray;
+            font-size: 10pt;
+            margin-bottom: 5px;
+        }
+
+        /* Always-shown origins */
+        .builtin-type .origin {
+            display: initial ;
+        }
+
+        .complex-type-extension, .simple-list, .simple-restriction {
+            color: navy;
+        }
+        :is(.complex-type-extension, .simple-list, .simple-restriction)
+        :is(.builtin-type, .simple-type, .origin) {
+            display: inline;
+            color: navy;
+        }
+
+        :is(.complex-type-attrs, .attribute-group, .simple-union) {
+            display: block;
+            margin: 3px 5px;
+            padding: 5px;
+            border-style: solid;
+            border-width: 1px;
+            border-color: lightgray;
+        }
+
+        .choice, .sequence {
+            display: block;
+            margin: 3px 5px;
+            padding: 5px;
+            border-style: solid;
+            border-width: 2px;
+        }
+
+        .choice {
+            border-color: firebrick;
+        }
+        .choice > .origin {
+            color: maroon;
+        }
+
+        .sequence {
+            border-color: olivedrab;
+        }
+        .sequence > .origin {
+            color: darkolivegreen;
+        }
+
+        .simple-union {
+            border-color: mediumblue;
+        }
+        .simple-union > .origin {
+            color: darkblue;
+        }
+
+        .collapsible-element-ref > summary:first-of-type::marker {
+            display: none;
+        }
+        .collapsible-element-ref > summary:first-of-type {
+            display: flex;
+        }
+        .collapsible-element-ref > summary:first-of-type > .arrow::before {
+            content: "▸";
+            padding-right: 5px;
+        }
+        .collapsible-element-ref[open] > summary:first-of-type > .arrow::before {
+            content: "▾";
+        }
+        .collapsible-element-ref[open] > summary > .simple {
+            display: none;
+        }
+        .collapsible-element-ref > summary > .detailed {
+            display: none;
+        }
+        .collapsible-element-ref[open] > summary > .detailed {
+            display: initial;
+        }
+    </style>
+</head>
+<body>
+    {% macro el_template(type, el) %}
+        <template data-type="{{ type }}"
+                  {{ el|elem_path_attrs|xmlattr }}>
+            {{ caller() }}
+        </template>
+    {% endmacro %}
+
+    {% macro el_div(class, el) %}
+        <div class="{{ class }}"
+             {{ el|elem_name_attrs|xmlattr }}>
+            {{ caller() }}
+        </div>
+    {% endmacro %}
+
+    {% macro attribute(attr_el) %}
+        <span class=attribute
+              {{ attr_el|elem_name_attrs|xmlattr }}>
+            {{ attr_el.attrib.name }}=
+            {% if attr_el.attrib.type and not attr_el.attrib.type.startswith("xsd:") %}
+                <a class="type-link"
+                   href="#type-{{ attr_el.attrib.type }}">
+                    {{ attr_el.attrib.type }}
+                </a>
+            {% else %}
+                <span>{{ attr_el.attrib.type }}</span>
+            {% endif %}
+            {% set occurs = attr_el.attrib.use|default("optional") %}
+            {% if occurs != "optional" %}
+                <span class=occurs>{{ occurs }}</span>
+            {% endif %}
+        </span>
+    {% endmacro %}
+
+    {% macro child_attributes(el) %}
+        {% for attr_el in el|xpath("xsd:attribute") %}
+            {{ attribute(attr_el) }}
+        {% endfor %}
+        {% for attrgr_el in el|xpath("xsd:attributeGroup[@ref]") %}
+            <xbe-ref type=attribute-group ref="{{ attrgr_el.attrib.ref }}"></xbe-ref>
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro child_elements(el) %}
+        {% for elem_el in el|xpath("xsd:element") %}
+            {{ element_ref_collapsible(
+                elem_el.attrib.name or elem_el.attrib.ref,
+                elem_el) }}
+        {% endfor %}
+
+        {% for choice_el in el|xpath("xsd:choice") %}
+            {% call el_div("choice", choice_el) %}
+                <span class="origin">Choice</span>
+                {{ element_occurs(choice_el) }}
+                {{ child_annotations(choice_el) }}
+                {{ child_elements(choice_el) }}
+            {% endcall %}
+        {% endfor %}
+
+        {% for seq_el in el|xpath("xsd:sequence") %}
+            {% call el_div("sequence", seq_el) %}
+                <span class="origin">Sequence</span>
+                {{ element_occurs(seq_el) }}
+                {{ child_annotations(seq_el) }}
+                {{ child_elements(seq_el) }}
+            {% endcall %}
+        {% endfor %}
+
+        {% for group_el in el|xpath("xsd:group") %}
+            {% if "ref" in group_el.attrib %}
+                {{ group_contents_ref(group_el.attrib.ref) }}
+            {% else %}
+                {{ group_contents(group_el) }}
+            {% endif %}
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro child_annotations(el) %}
+        {% for doc_el in el|xpath("xsd:annotation/*") %}
+            <p class=annotation>{{ doc_el|xpath("string()") }}</p>
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro elem_origin(prefix, el) %}
+        <div class=origin>
+            {% if "name" in el.attrib %}
+                {{ prefix|capitalize }} {{ el.attrib.name }}
+            {% else %}
+                Inline {{ prefix }}
+            {% endif %}
+        </div>
+    {% endmacro %}
+
+    {% macro complex_type_origin(ct_el) %}
+        {{ elem_origin("complex type", ct_el) }}
+    {% endmacro %}
+
+    {% macro complex_type_attrs(ct_el) %}
+        <span class=complex-type-attrs
+             {{ ct_el|elem_name_attrs|xmlattr }}>
+            {{ complex_type_origin(ct_el) }}
+            {{ child_attributes(ct_el) }}
+            {% for ext_el in ct_el|xpath("xsd:simpleContent/xsd:extension") %}
+                {{ child_attributes(ext_el) }}
+            {% endfor %}
+        </span>
+    {% endmacro %}
+
+    {% macro complex_type_contents(ct_el) %}
+        {% call el_div("complex-type-contents", ct_el) %}
+            {{ complex_type_origin(ct_el) }}
+            {{ child_annotations(ct_el) }}
+
+            {{ child_elements(ct_el) }}
+            {% for ext_el in ct_el|xpath("xsd:simpleContent/xsd:extension") %}
+                <div class=complex-type-extension
+                     {{ ext_el|elem_name_attrs|xmlattr }}>
+                    Based on:
+                    {{ type_contents_ref(ext_el.attrib.base) }}
+                </div>
+            {% endfor %}
+        {% endcall %}
+    {% endmacro %}
+
+    {% macro simple_type_contents(st_el) %}
+        {% call el_div("simple-type", st_el) %}
+            {{ elem_origin("simple type", st_el) }}
+            {{ child_annotations(st_el) }}
+
+            {% for union_el in st_el|xpath("xsd:union") %}
+                {% call el_div("simple-union", union_el) %}
+                    <span class="origin">Union</span>
+                    {% for st2_name in (union_el.attrib.memberTypes|default("")).split() %}
+                        {{ type_contents_ref(st2_name) }}
+                    {% endfor %}
+                    {% for st2_el in union_el|xpath("xsd:simpleType") %}
+                        {{ simple_type_contents(st2_el) }}
+                    {% endfor %}
+                {% endcall %}
+            {% endfor %}
+
+            {% for list_el in st_el|xpath("xsd:list") %}
+                {% call el_div("simple-list", list_el) %}
+                    List of:
+                    {{ type_contents_ref(list_el.attrib.itemType) }}
+                {% endcall %}
+            {% endfor %}
+
+            {% for rest_el in st_el|xpath("xsd:restriction") %}
+                {% call el_div("simple-restriction", rest_el) %}
+                    Restriction of:
+                    {{ type_contents_ref(rest_el.attrib.base) }}
+
+                    <ul>
+                        {% for el in rest_el %}
+                            <li><code>{{ el|prettyprint_xml }}</code></li>
+                        {% endfor %}
+                    </ul>
+                {% endcall %}
+            {% endfor %}
+        {% endcall %}
+    {% endmacro %}
+
+    {% macro group_contents(group_el) %}
+        {% call el_div("group-contents", group_el) %}
+            {{ elem_origin("group", group_el) }}
+            {{ child_annotations(group_el) }}
+            {{ child_elements(group_el) }}
+        {% endcall %}
+    {% endmacro %}
+
+    {% macro type_attrs_ref(type) %}
+        {% if not type %}
+        {% elif not type.startswith("xsd:") %}
+            {# Builtin types don't have attributes(?) #}
+            <xbe-ref type=type-attrs ref="{{ type }}"></xbe-ref>
+        {% endif %}
+    {% endmacro %}
+
+    {% macro type_contents_ref(type) %}
+        {% if not type %}
+        {% elif not type.startswith("xsd:") %}
+            <xbe-ref type=type-contents ref="{{ type }}"></xbe-ref>
+        {% else %}
+            <div class=builtin-type>
+                <div class=origin>Builtin type {{ type }}</div>
+            </div>
+        {% endif %}
+    {% endmacro %}
+
+    {% macro element_occurs(el) %}
+        <span class=occurs>
+            {% set max_occurs = el.attrib.maxOccurs|default(1) %}
+            {% if max_occurs == "unbounded" %}
+                {% set max_occurs = "*" %}
+            {% endif %}
+            <span>{{ el.attrib.minOccurs|default(1) }}</span>
+            <span class=sep>:</span>
+            <span>{{ max_occurs }}</span>
+        </span>
+    {% endmacro %}
+
+    {% macro element_ref_collapsible(name, ref_el) %}
+        <details class=collapsible-element-ref
+                 data-element="{{ name }}"
+                 ontoggle="onCollapsibleElementRefToggle(this)">
+            <summary>
+                <div class=arrow></div>
+                <span class=simple>&lt;{{ name }}&gt;...&lt;/{{name}}&gt;</span>
+                <xbe-ref class=detailed type=element-head ref="{{ name }}"></xbe-ref>
+                {% if ref_el is not none %}
+                    {{ element_occurs(ref_el) }}
+                {% endif %}
+            </summary>
+
+            <div class=element-contents></div>
+            <div class=element-end>
+                &lt;{{ name }}&gt;
+            </div>
+        </details>
+    {% endmacro %}
+
+    {% macro group_contents_ref(name) %}
+        <xbe-ref type=group-contents ref="{{ name }}"></xbe-ref>
+    {% endmacro %}
+
+    <div id=elements>
+        {% for elem_el in doc|xpath("//xsd:element[@name]") %}
+            {% call el_template("element-head", elem_el) %}
+                {% call el_div("element-head", elem_el) %}
+                    &lt;{{ elem_el.attrib.name }}
+                    {{ child_attributes(elem_el) }}
+                    {% for ct_el in elem_el|xpath("xsd:complexType") %}
+                        {{ complex_type_attrs(ct_el) }}
+                    {% else %}
+                        {{ type_attrs_ref(elem_el.attrib.type) }}
+                    {% endfor %}
+                    <span>&gt;</span>
+                {% endcall %}
+            {% endcall %}
+
+            {% call el_template("element-contents", elem_el) %}
+                {% call el_div("element-children", elem_el) %}
+                    {{ child_annotations(elem_el) }}
+
+                    {% for ct_el in elem_el|xpath("xsd:complexType") %}
+                        {{ complex_type_contents(ct_el) }}
+                    {% else %}
+                        {{ type_contents_ref(elem_el.attrib.type) }}
+                    {% endfor %}
+                {% endcall %}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=attribute-groups>
+        {% for attrgr_el in doc|xpath("//xsd:attributeGroup[@name]") %}
+            {% call el_template("attribute-group", attrgr_el) %}
+                {% call el_div("attribute-group", attrgr_el) %}
+                    {{ elem_origin("attribute group", attrgr_el) }}
+                    {{ child_annotations(attrgr_el) }}
+                    {% for attr_el in attrgr_el|xpath("xsd:attribute") %}
+                        {{ attribute(attr_el) }}
+                    {% endfor %}
+                {% endcall %}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=complex-types>
+        {% for ct_el in doc|xpath("//xsd:complexType[@name]") %}
+            {% call el_template("type-attrs", ct_el) %}
+                {{ complex_type_attrs(ct_el) }}
+            {% endcall %}
+
+            {% call el_template("type-contents", ct_el) %}
+                {{ complex_type_contents(ct_el) }}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=simple-types>
+        {% for st_el in doc|xpath("//xsd:simpleType[@name]") %}
+            {% call el_template("type-attrs", st_el) %}
+            {% endcall %}
+
+            {% call el_template("type-contents", st_el) %}
+                {{ simple_type_contents(st_el) }}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=groups>
+        {% for group_el in doc|xpath("//xsd:group[@name]") %}
+            {% call el_template("group-contents", group_el) %}
+                {{ group_contents(group_el) }}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <template id=root-element-template>
+        {{ element_ref_collapsible("ROOT_ELEMENT", None) }}
+    </template>
+
+    <template id=root-type-template>
+        <div class=standalone-type>
+            <div class=element-head>
+                &lt;
+                <span class=sample>element</span>
+                <xbe-ref type=type-attrs ref=ROOT_TYPE></xbe-ref>
+                <span>&gt;</span>
+            </div>
+            <xbe-ref type=type-contents ref=ROOT_TYPE></xbe-ref>
+            <div class=element-end>
+                &lt;/<span class=sample>element</span>&gt;
+            </div>
+        </div>
+    </template>
+
+    <header>
+        <h1>{{ main_xml_path.name }}</h1>
+
+        <form onsubmit="onElementFormSubmit()">
+            <input type=text
+                   list=element-list
+                   id=root-element-name
+                   placeholder="Element name">
+            <datalist id=element-list>
+                {% for elem_el in doc|xpath("xsd:element[@name]") %}
+                    <option>{{ elem_el.attrib.name }}</option>
+                {% endfor %}
+            </datalist>
+            <button>
+                Show element
+            </button>
+        </form>
+    </header>
+
+    <main>
+    </main>
+</body>
+</html>
