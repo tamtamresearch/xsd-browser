@@ -339,13 +339,19 @@
         <span class=attribute
               {{ attr_el|elem_name_attrs|xmlattr }}>
             {{ attr_el.attrib.name }}=
-            {% if attr_el.attrib.type and not attr_el.attrib.type.startswith("xsd:") %}
-                <a class="type-link"
-                   href="#type-{{ attr_el.attrib.type }}">
-                    {{ attr_el.attrib.type }}
-                </a>
+            {% if attr_el.attrib.type %}
+                {% if not attr_el.attrib.type.startswith("xsd:") %}
+                    <a class="type-link"
+                       href="#type-{{ attr_el.attrib.type }}">
+                        {{ attr_el.attrib.type }}
+                    </a>
+                {% else %}
+                    <span>{{ attr_el.attrib.type }}</span>
+                {% endif %}
             {% else %}
-                <span>{{ attr_el.attrib.type }}</span>
+                {% for st_el in attr_el|xpath("xsd:simpleType") %}
+                    {{ simple_type_contents(st_el) }}
+                {% endfor %}
             {% endif %}
             {% set occurs = attr_el.attrib.use|default("optional") %}
             {% if occurs != "optional" %}
