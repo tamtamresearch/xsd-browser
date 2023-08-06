@@ -11,6 +11,9 @@
                 if(el.tagName.toUpperCase() != "TEMPLATE" && el.dataset.name) {
                     path.push(el.dataset.name);
                 }
+                if(el.dataset.belowroot) {
+                    break;
+                }
                 el = el.parentElement;
             }
             return path;

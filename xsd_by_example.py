@@ -46,8 +46,13 @@ def elem_path_attrs(elem):
     }
 
 def elem_name_attrs(elem):
-    if "name" not in elem.attrib: return {}
-    return {"data-name": elem.attrib["name"]}
+    attrs = {}
+    if "name" in elem.attrib:
+        attrs["data-name"] = elem.attrib["name"]
+    parent = elem.getparent()
+    if parent is not None and parent.tag == f"{{{XSD}}}schema":
+        attrs["data-belowroot"] = True
+    return attrs
 
 class ImportResolver:
     def __init__(self, main_doc):
@@ -111,7 +116,7 @@ main_doc = parse_xml(main_doc_path)
 ImportResolver(main_doc).handle_imports(main_doc, main_doc_path)
 
 # TODO: Automatically add xsd prefix and remap xsd name/ref fields
-assert main_doc.getroot().nsmap.get("xsd") == "http://www.w3.org/2001/XMLSchema", \
+assert main_doc.getroot().nsmap.get("xsd") == XSD, \
     "Expected xsd prefix not found"
 
 template_env = jinja2.Environment(
