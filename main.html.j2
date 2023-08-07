@@ -35,7 +35,8 @@
         }
 
         function removeEmptyBoxes(rootEl) {
-            rootEl.querySelectorAll(".complex-type-attrs, .attribute-group")
+            rootEl.querySelectorAll(".complex-type-attrs, .extension-attrs,"
+                + ".restriction-attrs, .attribute-group")
                 .forEach(boxEl => {
                     const isEmpty = boxEl.querySelectorAll(".attribute")
                                         .length == 0;
@@ -249,7 +250,7 @@
             font-style: italic;
         }
 
-        .element-children {
+        .element-children, .extension-content {
             padding-left: 20px;
         }
 
@@ -260,6 +261,14 @@
             border-radius: 3px;
             padding: 0 2px;
             background-color: lavender;
+        }
+
+        .small-note {
+            display: inline;
+            margin-left: 10px;
+            border-radius: 3px;
+            padding: 0 2px;
+            background-color: peachpuff;
         }
 
         .attribute {
@@ -279,10 +288,6 @@
         }
 
         .origin {
-            display: none;
-        }
-        .origin {
-            display: initial;
             color: gray;
             font-size: 10pt;
             margin-bottom: 5px;
@@ -293,22 +298,27 @@
             display: initial ;
         }
 
-        .complex-type-extension, .simple-list, .simple-restriction {
-            color: navy;
-        }
-        :is(.complex-type-extension, .simple-list, .simple-restriction)
-        :is(.builtin-type, .simple-type, .origin) {
+        :is(.extension, .simple-list, .restriction)
+        > :is(.note, .builtin-type, .simple-type, .origin) {
             display: inline;
             color: navy;
         }
 
-        :is(.complex-type-attrs, .attribute-group, .simple-union) {
+        :is(.complex-type-attrs, .extension-attrs, .restriction-attrs,
+            .attribute-group, .simple-union, .substitution-group) {
             display: block;
             margin: 3px 5px;
             padding: 5px;
             border-style: solid;
             border-width: 1px;
             border-color: lightgray;
+        }
+
+        :is(.complex-type-attrs, .extension-attrs, .restriction-attrs,
+            .attribute-group) > .note {
+            color: gray;
+            font-size: 10pt;
+            margin-bottom: 5px;
         }
 
         .choice, .sequence {
@@ -379,19 +389,23 @@
         </div>
     {% endmacro %}
 
+    {% macro type_link(type) %}
+        {% if not type.startswith("xsd:") %}
+            <a class="type-link"
+               href="#type-{{ type }}">
+                {{ type }}
+            </a>
+        {% else %}
+            <span>{{ type }}</span>
+        {% endif %}
+    {% endmacro %}
+
     {% macro attribute(attr_el) %}
         <span class=attribute
               {{ attr_el|elem_name_attrs|xmlattr }}>
             {{ attr_el.attrib.name }}=
             {% if attr_el.attrib.type %}
-                {% if not attr_el.attrib.type.startswith("xsd:") %}
-                    <a class="type-link"
-                       href="#type-{{ attr_el.attrib.type }}">
-                        {{ attr_el.attrib.type }}
-                    </a>
-                {% else %}
-                    <span>{{ attr_el.attrib.type }}</span>
-                {% endif %}
+                {{ type_link(attr_el.attrib.type) }}
             {% else %}
                 {% for st_el in attr_el|xpath("xsd:simpleType") %}
                     {{ simple_type_contents(st_el) }}
@@ -475,8 +489,29 @@
              {{ ct_el|elem_name_attrs|xmlattr }}>
             {{ complex_type_origin(ct_el) }}
             {{ child_attributes(ct_el) }}
-            {% for ext_el in ct_el|xpath("xsd:simpleContent/xsd:extension") %}
-                {{ child_attributes(ext_el) }}
+            {% for ext_el in ct_el|xpath(
+                "(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                {% call el_div("extension-attrs", ext_el) %}
+                    <div class=origin>
+                        Extension of {{ ext_el.attrib.base }}:
+                    </div>
+                    {{ type_attrs_ref(ext_el.attrib.base) }}
+
+                    <span class=note>Extended by:</span>
+                    {{ child_attributes(ext_el) }}
+                {% endcall %}
+            {% endfor %}
+            {% for rest_el in ct_el|xpath(
+                "(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
+                {% call el_div("restriction-attrs", rest_el) %}
+                    <div class=origin>
+                        Restriction of {{ rest_el.attrib.base }}:
+                    </div>
+                    {{ type_attrs_ref(rest_el.attrib.base) }}
+
+                    <span class=note>Restricted by:</span>
+                    {{ child_attributes(rest_el) }}
+                {% endcall %}
             {% endfor %}
         </span>
     {% endmacro %}
@@ -487,12 +522,28 @@
             {{ child_annotations(ct_el) }}
 
             {{ child_elements(ct_el) }}
-            {% for ext_el in ct_el|xpath("xsd:simpleContent/xsd:extension") %}
-                <div class=complex-type-extension
-                     {{ ext_el|elem_name_attrs|xmlattr }}>
-                    Based on:
-                    {{ type_contents_ref(ext_el.attrib.base) }}
-                </div>
+            {% for ext_el in ct_el|xpath(
+                "(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                {% call el_div("extension", ext_el) %}
+                    <div class=note>Extension of:</div>
+                    <div class=extension-content>
+                        {{ type_contents_ref(ext_el.attrib.base) }}
+                    </div>
+                    <div class=note>Extended by:</div>
+                    {{ child_elements(ext_el) }}
+                {% endcall %}
+            {% endfor %}
+            {% for rest_el in ct_el|xpath(
+                "xsd:complexContent/xsd:restriction") %}
+                {% call el_div("restriction", rest_el) %}
+                    <div class=note>
+                        Restriction of {{ type_link(rest_el.attrib.base) }} to:
+                    </div>
+                    <!-- It seems restrictions need to re-declare all allowed
+                    elements, but attributes are preserved:
+                    https://stackoverflow.com/a/24292994 -->
+                    {{ child_elements(rest_el) }}
+                {% endcall %}
             {% endfor %}
         {% endcall %}
     {% endmacro %}
@@ -522,7 +573,7 @@
             {% endfor %}
 
             {% for rest_el in st_el|xpath("xsd:restriction") %}
-                {% call el_div("simple-restriction", rest_el) %}
+                {% call el_div("restriction", rest_el) %}
                     Restriction of:
                     {{ type_contents_ref(rest_el.attrib.base) }}
 
@@ -584,6 +635,9 @@
             {% call el_template("element-head", elem_el) %}
                 {% call el_div("element-head", elem_el) %}
                     &lt;{{ elem_el.attrib.name }}
+                    {% if elem_el.attrib.abstract == "true" %}
+                        <span class=small-note>abstract</span>
+                    {% endif %}
                     {{ child_attributes(elem_el) }}
                     {% for ct_el in elem_el|xpath("xsd:complexType") %}
                         {{ complex_type_attrs(ct_el) }}
