@@ -103,8 +103,8 @@
                 const template = document.getElementById(
                     "collapsible-element-ref-template");
                 const baseContentEl = template.content.cloneNode(true);
-                baseContentEl.querySelector(".collapsible-element-ref")
-                    .dataset.element = element;
+                const detailsEl = baseContentEl.querySelector("details");
+                detailsEl.dataset.element = element;
                 baseContentEl
                     .querySelectorAll(".simple, .element-end")
                     .forEach(el =>
@@ -155,6 +155,7 @@
                 return;
             }
 
+            document.getElementById("root-element-name").value = element;
             const contentEl = document.createElement("xbe-collapsible-element-ref");
             contentEl.setAttribute("element", element);
 
@@ -350,6 +351,10 @@
             color: darkblue;
         }
 
+        .group-wrapper > .origin {
+            display: inline;
+        }
+
         .collapsible-element-ref > summary:first-of-type::marker {
             display: none;
         }
@@ -456,11 +461,15 @@
         {% endfor %}
 
         {% for group_el in el|xpath("xsd:group") %}
-            {% if "ref" in group_el.attrib %}
-                {{ group_contents_ref(group_el.attrib.ref) }}
-            {% else %}
-                {{ group_contents(group_el) }}
-            {% endif %}
+            <div class=group-wrapper>
+                {{ elem_origin("group", group_el) }}
+                {{ element_occurs(group_el) }}
+                {% if "ref" in group_el.attrib %}
+                    {{ group_contents_ref(group_el.attrib.ref) }}
+                {% else %}
+                    {{ group_contents(group_el) }}
+                {% endif %}
+            </div>
         {% endfor %}
     {% endmacro %}
 
@@ -470,10 +479,15 @@
         {% endfor %}
     {% endmacro %}
 
-    {% macro elem_origin(prefix, el) %}
+    {% macro elem_origin(prefix, el, kind="") %}
         <div class=origin>
-            {% if "name" in el.attrib %}
-                {{ prefix|capitalize }} {{ el.attrib.name }}
+            {% if "name" in el.attrib or "ref" in el.attrib %}
+                {{ prefix|capitalize }}
+                {% if kind == "type" %}
+                    {{ type_link(el.attrib.name or el.attrib.ref) }}
+                {% else %}
+                    {{ el.attrib.name or el.attrib.ref }}
+                {% endif %}
             {% else %}
                 Inline {{ prefix }}
             {% endif %}
@@ -481,7 +495,7 @@
     {% endmacro %}
 
     {% macro complex_type_origin(ct_el) %}
-        {{ elem_origin("complex type", ct_el) }}
+        {{ elem_origin("complex type", ct_el, kind="type") }}
     {% endmacro %}
 
     {% macro complex_type_attrs(ct_el) %}
@@ -589,7 +603,6 @@
 
     {% macro group_contents(group_el) %}
         {% call el_div("group-contents", group_el) %}
-            {{ elem_origin("group", group_el) }}
             {{ child_annotations(group_el) }}
             {{ child_elements(group_el) }}
         {% endcall %}
@@ -615,15 +628,18 @@
     {% endmacro %}
 
     {% macro element_occurs(el) %}
-        <span class=occurs>
-            {% set max_occurs = el.attrib.maxOccurs|default(1) %}
-            {% if max_occurs == "unbounded" %}
-                {% set max_occurs = "*" %}
-            {% endif %}
-            <span>{{ el.attrib.minOccurs|default(1) }}</span>
-            <span class=sep>:</span>
-            <span>{{ max_occurs }}</span>
-        </span>
+        {% set min_occurs = el.attrib.minOccurs|default("1") %}
+        {% set max_occurs = el.attrib.maxOccurs|default("1") %}
+        {% if max_occurs == "unbounded" %}
+            {% set max_occurs = "*" %}
+        {% endif %}
+        {% if min_occurs != "1" or max_occurs != "1" %}
+            <span class=occurs>
+                <span>{{ el.attrib.minOccurs|default(1) }}</span>
+                <span class=sep>:</span>
+                <span>{{ max_occurs }}</span>
+            </span>
+        {% endif %}
     {% endmacro %}
 
     {% macro group_contents_ref(name) %}
