@@ -42,6 +42,7 @@ def elem_path_attrs(elem):
     path = elem_path(elem)
     return {
         "data-name": path[0],
+        "data-substgroups": elem.attrib.get("substitutionGroup", ""),
         "data-path": "/".join(path),
     }
 
