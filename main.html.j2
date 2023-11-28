@@ -553,9 +553,9 @@
                     <div class=note>
                         Restriction of {{ type_link(rest_el.attrib.base) }} to:
                     </div>
-                    <!-- It seems restrictions need to re-declare all allowed
+                    {# It seems restrictions need to re-declare all allowed
                     elements, but attributes are preserved:
-                    https://stackoverflow.com/a/24292994 -->
+                    https://stackoverflow.com/a/24292994 #}
                     {{ child_elements(rest_el) }}
                 {% endcall %}
             {% endfor %}
