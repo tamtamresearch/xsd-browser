@@ -85,20 +85,26 @@
                 removeChildren(this);
                 this.addElement(this, element);
 
-                const substituents = document.querySelectorAll(
-                    `[data-type=element-head][data-substgroups~="${element}"]`);
-                if(substituents.length > 0) {
-                    const box = document.createElement("div");
-                    box.classList.add("substitution-group");
-                    const origin = document.createElement("div");
-                    origin.classList.add("origin");
-                    origin.innerText = `Substitution group ${element}`;
-                    box.appendChild(origin);
-                    substituents.forEach(subst => {
-                        this.addElement(box, subst.dataset.path);
-                    });
-                    this.appendChild(box);
+                const addFromSubstGroup = (parent, substGroup) => {
+                    const substituents = document.querySelectorAll(
+                        `[data-type=element-head][data-substgroup="${substGroup}"]`);
+                    if(substituents.length > 0) {
+                        const box = document.createElement("div");
+                        box.classList.add("substitution-group");
+                        const origin = document.createElement("div");
+                        origin.classList.add("origin");
+                        origin.innerText = `Substitution group ${element}`;
+                        box.appendChild(origin);
+                        substituents.forEach(subst => {
+                            this.addElement(box, subst.dataset.path);
+                        });
+                        substituents.forEach(subst => {
+                            addFromSubstGroup(box, subst.dataset.name);
+                        });
+                        parent.appendChild(box);
+                    }
                 }
+                addFromSubstGroup(this, element);
             }
 
             addElement(base, element) {
@@ -652,16 +658,39 @@
         {% endcall %}
     {% endmacro %}
 
+    {% macro usages_content_inner(type, name) %}
+        {% for from_t, from_n in usages_by_name[(type, name)] %}
+            {% if from_t == "element" %}
+                <li>{{ elem_link(from_n) }}</li>
+            {% elif from_t == "type" %}
+                <li>{{ type_link(from_n) }}</li>
+            {% endif %}
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro usages_content_sg(el, type) %}
+        {% if el.attrib.substitutionGroup %}
+            <li class=subst-usages>
+                <span class=origin>Substitution group {{ el.attrib.substitutionGroup }}</span>
+                <ul>
+                    {{ usages_content_inner(type, el.attrib.substitutionGroup) }}
+
+                    {% if type == "element" %} {# TODO: Other types #}
+                        {% for base_el in doc|xpath('//xsd:element[@name="{}"]'.format(
+                                el.attrib.substitutionGroup)) %}
+                                {{ usages_content_sg(base_el, type) }}
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+            </li>
+        {% endif %}
+    {% endmacro %}
+
     {% macro usages_content(named_el) %}
         {% set type = named_el|elem_type %} 
         <ul class=usages>
-            {% for from_t, from_n in usages_by_name[(type, named_el.attrib.name)] %}
-                {% if from_t == "element" %}
-                    <li>{{ elem_link(from_n) }}</li>
-                {% elif from_t == "type" %}
-                    <li>{{ type_link(from_n) }}</li>
-                {% endif %}
-            {% endfor %}
+            {{ usages_content_inner(type, named_el.attrib.name) }}
+            {{ usages_content_sg(named_el, type) }}
         </ul>
     {% endmacro %}
 
