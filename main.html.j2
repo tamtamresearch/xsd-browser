@@ -25,13 +25,15 @@
                 const cutPath = path.slice(0, i);
                 const cutPathStr = cutPath.join("/");
                 const templateEl = document.querySelector(
-                    `template[data-type="${type}"][data-path="${cutPathStr}"]`);
+                    (type ? `template[data-type="${type}"]` : "")
+                    + `[data-path="${cutPathStr}"]`);
                 if(templateEl) return templateEl;
             }
 
             // Path based match failed, try any name
             return document.querySelector(
-                `template[data-type="${type}"][data-name="${path[0]}"]`);
+                (type ? `template[data-type="${type}"]` : "")
+                + `[data-name="${path[0]}"]`);
         }
 
         function removeEmptyBoxes(rootEl) {
@@ -156,8 +158,16 @@
             }
 
             document.getElementById("root-element-name").value = element;
-            const contentEl = document.createElement("xbe-collapsible-element-ref");
-            contentEl.setAttribute("element", element);
+
+            const template = document.getElementById("root-element-template");
+            const contentEl = template.content.cloneNode(true);
+
+            contentEl.querySelectorAll("h2").forEach(el => {
+                el.innerText = el.innerText.replace("ROOT_ELEM", element);
+            });
+            contentEl.querySelector("xbe-ref").setAttribute("ref", element);
+            contentEl.querySelector("xbe-collapsible-element-ref")
+                .setAttribute("element", element);
 
             setMainContent(contentEl);
         }
@@ -172,6 +182,9 @@
             const template = document.getElementById("root-type-template");
             const contentEl = template.content.cloneNode(true);
 
+            contentEl.querySelectorAll("h2").forEach(el => {
+                el.innerText = el.innerText.replace("ROOT_TYPE", type);
+            });
             contentEl.querySelectorAll("xbe-ref").forEach(refEl => {
                 refEl.setAttribute("ref", type);
             });
@@ -215,6 +228,10 @@
             font-size: 20pt;
             margin: 0;
             color: #333;
+        }
+
+        h2 {
+            font-size: 14pt;
         }
 
         code {
@@ -377,6 +394,22 @@
         .collapsible-element-ref[open] > summary > .detailed {
             display: initial;
         }
+
+        .usages-box {
+            margin-bottom: 10px;
+        }
+
+        .usages-box summary {
+            margin-bottom: 5px;
+        }
+
+        .usages-box .usages {
+            margin-left: 15px;
+        }
+
+        .usages a {
+            font-size: 10pt;
+        }
     </style>
 </head>
 <body>
@@ -394,7 +427,16 @@
         </div>
     {% endmacro %}
 
-    {% macro type_link(type) %}
+    {% macro elem_link(name, on) %}
+        {{ record_usage(on, ("element", name)) }}
+        <a class="element-link"
+           href="#element-{{ name }}">
+            {{  name }}
+        </a>
+    {% endmacro %}
+
+    {% macro type_link(type, on) %}
+        {{ record_usage(on, ("type", type)) }}
         {% if not type.startswith("xsd:") %}
             <a class="type-link"
                href="#type-{{ type }}">
@@ -405,12 +447,12 @@
         {% endif %}
     {% endmacro %}
 
-    {% macro attribute(attr_el) %}
+    {% macro attribute(attr_el, on) %}
         <span class=attribute
               {{ attr_el|elem_name_attrs|xmlattr }}>
             {{ attr_el.attrib.name }}=
             {% if attr_el.attrib.type %}
-                {{ type_link(attr_el.attrib.type) }}
+                {{ type_link(attr_el.attrib.type, on) }}
             {% else %}
                 {% for st_el in attr_el|xpath("xsd:simpleType") %}
                     {{ simple_type_contents(st_el) }}
@@ -423,19 +465,21 @@
         </span>
     {% endmacro %}
 
-    {% macro child_attributes(el) %}
+    {% macro child_attributes(el, on) %}
         {% for attr_el in el|xpath("xsd:attribute") %}
-            {{ attribute(attr_el) }}
+            {{ attribute(attr_el, on) }}
         {% endfor %}
         {% for attrgr_el in el|xpath("xsd:attributeGroup[@ref]") %}
+            {{ record_usage(on, ("attribute-group", attrgr_el.attrib.ref)) }}
             <xbe-ref type=attribute-group ref="{{ attrgr_el.attrib.ref }}"></xbe-ref>
         {% endfor %}
     {% endmacro %}
 
-    {% macro child_elements(el) %}
+    {% macro child_elements(el, on) %}
         {% for elem_el in el|xpath("xsd:element") %}
-            <xbe-collapsible-element-ref
-                element="{{ elem_el.attrib.name or elem_el.attrib.ref }}">
+            {% set ref = elem_el.attrib.name or elem_el.attrib.ref %}
+            {{ record_usage(on, ("element", ref)) }}
+            <xbe-collapsible-element-ref element="{{ ref }}">
                 <span slot=after-head>
                     {{ element_occurs(elem_el) }}
                 </span>
@@ -447,7 +491,7 @@
                 <span class="origin">Choice</span>
                 {{ element_occurs(choice_el) }}
                 {{ child_annotations(choice_el) }}
-                {{ child_elements(choice_el) }}
+                {{ child_elements(choice_el, on) }}
             {% endcall %}
         {% endfor %}
 
@@ -456,7 +500,7 @@
                 <span class="origin">Sequence</span>
                 {{ element_occurs(seq_el) }}
                 {{ child_annotations(seq_el) }}
-                {{ child_elements(seq_el) }}
+                {{ child_elements(seq_el, on) }}
             {% endcall %}
         {% endfor %}
 
@@ -465,9 +509,9 @@
                 {{ elem_origin("group", group_el) }}
                 {{ element_occurs(group_el) }}
                 {% if "ref" in group_el.attrib %}
-                    {{ group_contents_ref(group_el.attrib.ref) }}
+                    {{ group_contents_ref(group_el.attrib.ref, on) }}
                 {% else %}
-                    {{ group_contents(group_el) }}
+                    {{ group_contents(group_el, on) }}
                 {% endif %}
             </div>
         {% endfor %}
@@ -498,21 +542,21 @@
         {{ elem_origin("complex type", ct_el, kind="type") }}
     {% endmacro %}
 
-    {% macro complex_type_attrs(ct_el) %}
+    {% macro complex_type_attrs(ct_el, on) %}
         <span class=complex-type-attrs
              {{ ct_el|elem_name_attrs|xmlattr }}>
             {{ complex_type_origin(ct_el) }}
-            {{ child_attributes(ct_el) }}
+            {{ child_attributes(ct_el, on) }}
             {% for ext_el in ct_el|xpath(
                 "(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
                 {% call el_div("extension-attrs", ext_el) %}
                     <div class=origin>
                         Extension of {{ ext_el.attrib.base }}:
                     </div>
-                    {{ type_attrs_ref(ext_el.attrib.base) }}
+                    {{ type_attrs_ref(ext_el.attrib.base, on) }}
 
                     <span class=note>Extended by:</span>
-                    {{ child_attributes(ext_el) }}
+                    {{ child_attributes(ext_el, on) }}
                 {% endcall %}
             {% endfor %}
             {% for rest_el in ct_el|xpath(
@@ -521,30 +565,30 @@
                     <div class=origin>
                         Restriction of {{ rest_el.attrib.base }}:
                     </div>
-                    {{ type_attrs_ref(rest_el.attrib.base) }}
+                    {{ type_attrs_ref(rest_el.attrib.base, on) }}
 
                     <span class=note>Restricted by:</span>
-                    {{ child_attributes(rest_el) }}
+                    {{ child_attributes(rest_el, on) }}
                 {% endcall %}
             {% endfor %}
         </span>
     {% endmacro %}
 
-    {% macro complex_type_contents(ct_el) %}
+    {% macro complex_type_contents(ct_el, on) %}
         {% call el_div("complex-type-contents", ct_el) %}
             {{ complex_type_origin(ct_el) }}
             {{ child_annotations(ct_el) }}
 
-            {{ child_elements(ct_el) }}
+            {{ child_elements(ct_el, on) }}
             {% for ext_el in ct_el|xpath(
                 "(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
                 {% call el_div("extension", ext_el) %}
                     <div class=note>Extension of:</div>
                     <div class=extension-content>
-                        {{ type_contents_ref(ext_el.attrib.base) }}
+                        {{ type_contents_ref(ext_el.attrib.base, on) }}
                     </div>
                     <div class=note>Extended by:</div>
-                    {{ child_elements(ext_el) }}
+                    {{ child_elements(ext_el, on) }}
                 {% endcall %}
             {% endfor %}
             {% for rest_el in ct_el|xpath(
@@ -562,7 +606,7 @@
         {% endcall %}
     {% endmacro %}
 
-    {% macro simple_type_contents(st_el) %}
+    {% macro simple_type_contents(st_el, on) %}
         {% call el_div("simple-type", st_el) %}
             {{ elem_origin("simple type", st_el) }}
             {{ child_annotations(st_el) }}
@@ -571,10 +615,10 @@
                 {% call el_div("simple-union", union_el) %}
                     <span class="origin">Union</span>
                     {% for st2_name in (union_el.attrib.memberTypes|default("")).split() %}
-                        {{ type_contents_ref(st2_name) }}
+                        {{ type_contents_ref(st2_name, on) }}
                     {% endfor %}
                     {% for st2_el in union_el|xpath("xsd:simpleType") %}
-                        {{ simple_type_contents(st2_el) }}
+                        {{ simple_type_contents(st2_el, on) }}
                     {% endfor %}
                 {% endcall %}
             {% endfor %}
@@ -582,14 +626,14 @@
             {% for list_el in st_el|xpath("xsd:list") %}
                 {% call el_div("simple-list", list_el) %}
                     List of:
-                    {{ type_contents_ref(list_el.attrib.itemType) }}
+                    {{ type_contents_ref(list_el.attrib.itemType, on) }}
                 {% endcall %}
             {% endfor %}
 
             {% for rest_el in st_el|xpath("xsd:restriction") %}
                 {% call el_div("restriction", rest_el) %}
                     Restriction of:
-                    {{ type_contents_ref(rest_el.attrib.base) }}
+                    {{ type_contents_ref(rest_el.attrib.base, on) }}
 
                     <ul>
                         {% for el in rest_el %}
@@ -601,29 +645,50 @@
         {% endcall %}
     {% endmacro %}
 
-    {% macro group_contents(group_el) %}
+    {% macro group_contents(group_el, on) %}
         {% call el_div("group-contents", group_el) %}
             {{ child_annotations(group_el) }}
-            {{ child_elements(group_el) }}
+            {{ child_elements(group_el, on) }}
         {% endcall %}
     {% endmacro %}
 
-    {% macro type_attrs_ref(type) %}
+    {% macro usages_content(named_el) %}
+        {% set type = named_el|elem_type %} 
+        <ul class=usages>
+            {% for from_t, from_n in usages_by_name[(type, named_el.attrib.name)] %}
+                {% if from_t == "element" %}
+                    <li>{{ elem_link(from_n) }}</li>
+                {% elif from_t == "type" %}
+                    <li>{{ type_link(from_n) }}</li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    {% endmacro %}
+
+    {% macro type_attrs_ref(type, on) %}
         {% if not type %}
         {% elif not type.startswith("xsd:") %}
+            {{ record_usage(on, ("type", type)) }}
             {# Builtin types don't have attributes(?) #}
             <xbe-ref type=type-attrs ref="{{ type }}"></xbe-ref>
         {% endif %}
     {% endmacro %}
 
-    {% macro type_contents_ref(type) %}
+    {% macro type_contents_ref(type, on) %}
         {% if not type %}
         {% elif not type.startswith("xsd:") %}
+            {{ record_usage(on, ("type", type)) }}
             <xbe-ref type=type-contents ref="{{ type }}"></xbe-ref>
         {% else %}
             <div class=builtin-type>
                 <div class=origin>Builtin type {{ type }}</div>
             </div>
+        {% endif %}
+    {% endmacro %}
+
+    {% macro record_usage(on, uses) %}
+        {% if on %}
+            {% do usages_by_name[uses].add(on) %}
         {% endif %}
     {% endmacro %}
 
@@ -642,23 +707,25 @@
         {% endif %}
     {% endmacro %}
 
-    {% macro group_contents_ref(name) %}
+    {% macro group_contents_ref(name, on) %}
+        {{ record_usage(on, ("group-contents", name)) }}
         <xbe-ref type=group-contents ref="{{ name }}"></xbe-ref>
     {% endmacro %}
 
     <div id=elements>
         {% for elem_el in doc|xpath("//xsd:element[@name]") %}
+            {% set on = ("element", elem_el.attrib.name) %}
             {% call el_template("element-head", elem_el) %}
                 {% call el_div("element-head", elem_el) %}
                     &lt;{{ elem_el.attrib.name }}
                     {% if elem_el.attrib.abstract == "true" %}
                         <span class=small-note>abstract</span>
                     {% endif %}
-                    {{ child_attributes(elem_el) }}
+                    {{ child_attributes(elem_el, on) }}
                     {% for ct_el in elem_el|xpath("xsd:complexType") %}
-                        {{ complex_type_attrs(ct_el) }}
+                        {{ complex_type_attrs(ct_el, on) }}
                     {% else %}
-                        {{ type_attrs_ref(elem_el.attrib.type) }}
+                        {{ type_attrs_ref(elem_el.attrib.type, on) }}
                     {% endfor %}
                     <span>&gt;</span>
                 {% endcall %}
@@ -669,9 +736,9 @@
                     {{ child_annotations(elem_el) }}
 
                     {% for ct_el in elem_el|xpath("xsd:complexType") %}
-                        {{ complex_type_contents(ct_el) }}
+                        {{ complex_type_contents(ct_el, on) }}
                     {% else %}
-                        {{ type_contents_ref(elem_el.attrib.type) }}
+                        {{ type_contents_ref(elem_el.attrib.type, on) }}
                     {% endfor %}
                 {% endcall %}
             {% endcall %}
@@ -680,12 +747,13 @@
 
     <div id=attribute-groups>
         {% for attrgr_el in doc|xpath("//xsd:attributeGroup[@name]") %}
+            {% set on = ("attribute-group", attrgr_el.attrib.name) %}
             {% call el_template("attribute-group", attrgr_el) %}
                 {% call el_div("attribute-group", attrgr_el) %}
                     {{ elem_origin("attribute group", attrgr_el) }}
                     {{ child_annotations(attrgr_el) }}
                     {% for attr_el in attrgr_el|xpath("xsd:attribute") %}
-                        {{ attribute(attr_el) }}
+                        {{ attribute(attr_el, on) }}
                     {% endfor %}
                 {% endcall %}
             {% endcall %}
@@ -694,31 +762,44 @@
 
     <div id=complex-types>
         {% for ct_el in doc|xpath("//xsd:complexType[@name]") %}
+            {% set on = ("type", ct_el.attrib.name) %}
             {% call el_template("type-attrs", ct_el) %}
-                {{ complex_type_attrs(ct_el) }}
+                {{ complex_type_attrs(ct_el, on) }}
             {% endcall %}
 
             {% call el_template("type-contents", ct_el) %}
-                {{ complex_type_contents(ct_el) }}
+                {{ complex_type_contents(ct_el, on) }}
             {% endcall %}
         {% endfor %}
     </div>
 
     <div id=simple-types>
         {% for st_el in doc|xpath("//xsd:simpleType[@name]") %}
+            {% set on = ("type", st_el.attrib.name) %}
             {% call el_template("type-attrs", st_el) %}
             {% endcall %}
 
             {% call el_template("type-contents", st_el) %}
-                {{ simple_type_contents(st_el) }}
+                {{ simple_type_contents(st_el, on) }}
             {% endcall %}
         {% endfor %}
     </div>
 
     <div id=groups>
         {% for group_el in doc|xpath("//xsd:group[@name]") %}
+            {% set on = ("group", group_el.attrib.name) %}
             {% call el_template("group-contents", group_el) %}
-                {{ group_contents(group_el) }}
+                {{ group_contents(group_el, on) }}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=usages>
+        {% for named_el in doc|xpath(
+                "(//xsd:element|//xsd:simpleType|//xsd:complexType|//xsd:attributeGroup)[@name]") %}
+            {% set type = named_el|elem_type %}
+            {% call el_template(type + "-usages", named_el) %}
+                {{ usages_content(named_el) }}
             {% endcall %}
         {% endfor %}
     </div>
@@ -741,9 +822,25 @@
         </details>
     </template>
 
+    <template id=root-element-template>
+        <div class=standalone-element>
+            <h2>Type ROOT_ELEM</h2>
+            <details class=usages-box>
+                <summary>Used by:</summary>
+                <xbe-ref type=element-usages ref=ROOT_ELEM></xbe-ref>
+            </details>
+            <xbe-collapsible-element-ref element="ELEMENT">
+            </xbe-collapsible-element-ref>
+        </div>
+    </template>
 
     <template id=root-type-template>
         <div class=standalone-type>
+            <h2>Type ROOT_TYPE</h2>
+            <details class=usages-box>
+                <summary>Used by:</summary>
+                <xbe-ref type=type-usages ref=ROOT_TYPE></xbe-ref>
+            </details>
             <div class=element-head>
                 &lt;
                 <span class=sample>element</span>

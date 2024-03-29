@@ -4,6 +4,7 @@
 import sys
 from copy import deepcopy
 from pathlib import Path
+from collections import defaultdict
 
 import lxml.etree
 import lxml.objectify
@@ -29,6 +30,14 @@ def prettyprint_xml(elem):
     if not isinstance(elem, lxml.etree._Comment):
         lxml.etree.cleanup_namespaces(elem)
     return lxml.etree.tostring(elem, pretty_print=True, ).decode()
+
+def elem_type(elem):
+    return {
+        "element": "element",
+        "simpleType": "type",
+        "complexType": "type",
+        "attributeGroup": "attribute-group"
+    }[elem.tag.split("}")[1]]
 
 def elem_path(elem):
     path = []
@@ -121,12 +130,14 @@ assert main_doc.getroot().nsmap.get("xsd") == XSD, \
     "Expected xsd prefix not found"
 
 template_env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(Path(__file__).parent),
+    loader=jinja2.FileSystemLoader(Path(__file__).parent),
     autoescape=True)
+template_env.add_extension("jinja2.ext.do")
 template_env.filters.update({
     "xpath": xpath,
     "xpath_one": xpath_one,
     "prettyprint_xml": prettyprint_xml,
+    "elem_type": elem_type,
     "elem_path_attrs": elem_path_attrs,
     "elem_name_attrs": elem_name_attrs,
 })
@@ -134,5 +145,8 @@ template_env.filters.update({
 template = template_env.get_template("main.html.j2")
 print(template.render(
     main_xml_path=main_doc_path,
-    doc=main_doc
+    doc=main_doc,
+    # Maps tuple of (type, name) to (type, name) tuples where the first
+    # is referenced by the second
+    usages_by_name=defaultdict(set),
 ))
