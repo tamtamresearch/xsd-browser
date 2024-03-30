@@ -36,7 +36,8 @@ def elem_type(elem):
         "element": "element",
         "simpleType": "type",
         "complexType": "type",
-        "attributeGroup": "attribute-group"
+        "group": "group",
+        "attributeGroup": "attribute-group",
     }[elem.tag.split("}")[1]]
 
 def elem_path(elem):

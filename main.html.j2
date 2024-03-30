@@ -58,10 +58,10 @@
 
                 const thisPath = domElementPath(this);
                 const path = [this.getAttribute("ref"), ...thisPath];
-                const template = closestTemplateForPath(
-                    this.getAttribute("type"), path);
+                const type = this.getAttribute("type");
+                const template = closestTemplateForPath(type, path);
                 if(!template) {
-                    console.error(`No template for ${path}!`);
+                    console.error(`No template for ${path}! (type ${type})`);
                     return;
                 }
                 const contentEl = template.content.cloneNode(true);
@@ -198,12 +198,34 @@
             setMainContent(contentEl);
         }
 
+        function showGroup(group) {
+            if(!document.querySelector(
+                `template[data-type="group-contents"][data-path="${group}"]`)) {
+                alert(`No such group: ${group}`);
+                return;
+            }
+
+            const template = document.getElementById("root-group-template");
+            const contentEl = template.content.cloneNode(true);
+
+            contentEl.querySelectorAll("h2").forEach(el => {
+                el.innerText = el.innerText.replace("ROOT_GROUP", group);
+            });
+            contentEl.querySelectorAll("xbe-ref").forEach(el => {
+                el.setAttribute("ref", group);
+            });
+
+            setMainContent(contentEl);
+        }
+
         function showFromHash() {
             const hash = window.location.hash.substring(1);
             if(hash.startsWith("element-")) {
                 showElement(hash.substring(8));
             } else if(hash.startsWith("type-")) {
                 showType(hash.substring(5));
+            } else if(hash.startsWith("group-")) {
+                showGroup(hash.substring(6));
             }
         }
 
@@ -299,9 +321,6 @@
             display: flex;
             flex-direction: row;
             margin-left: 5px;
-        }
-
-        a.type-link {
         }
 
         .annotation {
@@ -437,7 +456,7 @@
         {{ record_usage(on, ("element", name)) }}
         <a class="element-link"
            href="#element-{{ name }}">
-            {{  name }}
+            {{ name }}
         </a>
     {% endmacro %}
 
@@ -451,6 +470,14 @@
         {% else %}
             <span>{{ type }}</span>
         {% endif %}
+    {% endmacro %}
+
+    {% macro group_link(name, on) %}
+        {{ record_usage(on, ("group", name)) }}
+        <a class="group-link"
+           href="#group-{{ name }}">
+            {{ name }}
+        </a>
     {% endmacro %}
 
     {% macro attribute(attr_el, on) %}
@@ -664,6 +691,10 @@
                 <li>{{ elem_link(from_n) }}</li>
             {% elif from_t == "type" %}
                 <li>{{ type_link(from_n) }}</li>
+            {% elif from_t == "group" %}
+                <li>{{ group_link(from_n) }}</li>
+            {% else %}
+                <li>{{ from_t }} {{from_n}}</li>
             {% endif %}
         {% endfor %}
     {% endmacro %}
@@ -737,7 +768,7 @@
     {% endmacro %}
 
     {% macro group_contents_ref(name, on) %}
-        {{ record_usage(on, ("group-contents", name)) }}
+        {{ record_usage(on, ("group", name)) }}
         <xbe-ref type=group-contents ref="{{ name }}"></xbe-ref>
     {% endmacro %}
 
@@ -825,7 +856,7 @@
 
     <div id=usages>
         {% for named_el in doc|xpath(
-                "(//xsd:element|//xsd:simpleType|//xsd:complexType|//xsd:attributeGroup)[@name]") %}
+                "(//xsd:element|//xsd:simpleType|//xsd:complexType|//xsd:group|//xsd:attributeGroup)[@name]") %}
             {% set type = named_el|elem_type %}
             {% call el_template(type + "-usages", named_el) %}
                 {{ usages_content(named_el) }}
@@ -880,6 +911,17 @@
             <div class=element-end>
                 &lt;/<span class=sample>element</span>&gt;
             </div>
+        </div>
+    </template>
+
+    <template id=root-group-template>
+        <div class=standalone-group>
+            <h2>Group ROOT_GROUP</h2>
+            <details class=usages-box>
+                <summary>Used by:</summary>
+                <xbe-ref type=group-usages ref=ROOT_GROUP></xbe-ref>
+            </details>
+            <xbe-ref type=group-contents ref=ROOT_GROUP></xbe-ref>
         </div>
     </template>
 
