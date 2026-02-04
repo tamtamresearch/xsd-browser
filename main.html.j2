@@ -607,8 +607,7 @@
     {% endmacro %}
     
     {% macro inherited_elements(base, on) %}
-        {% set base_name = base.split(":")[-1] %}
-        {% for base_ct in doc|xpath('//xsd:complexType[@name="{}"]'.format(base_name)) %}
+        {% for base_ct in doc|xpath('//xsd:complexType[@name="{}"]'.format(base)) %}
             {{ child_elements(base_ct, on) }}
         {% endfor %}
     {% endmacro %}

@@ -138,6 +138,31 @@ The "Extended by" section on complex type pages was always empty due to an XPath
 
 **Example**: For the abstract type `ApplicationRootMessageML`, types like `TECMessage` (which declare `<xs:extension base="tsf:ApplicationRootMessageML">`) are now correctly listed under "Extended by" when present in the merged schema.
 
+### Fix: Cross-namespace type references not resolved (empty type contents)
+
+Types referenced across namespace boundaries (e.g., `mmc:MessageManagementContainer` from within TEC_3_4.xsd) rendered as empty in the output because the JavaScript template lookup could not match the prefixed reference to the unprefixed type definition.
+
+**Root cause**: The import resolver created an inconsistency between type *names* and type *references*:
+
+1. Type `@name` attributes from imported schemas were never prefixed (only elements, groups, and attributeGroups were). So `MessageManagementContainer` stayed unprefixed in the merged document.
+2. Type `@type` references that already had a cross-namespace prefix (e.g., `type="mmc:MessageManagementContainer"` in TEC_3_4.xsd) were left as-is because they contained a colon. But the `mmc:` prefix was only valid in TEC's context, not in the root document.
+3. Extension/restriction `@base` attributes were not rewritten at all.
+
+This caused the JavaScript `<xbe-ref>` lookup to search for `mmc:MessageManagementContainer` while the template was registered under `MessageManagementContainer` — no match, empty content.
+
+**Fix** (three changes in `xsd_by_example.py` and one in `main.html.j2`):
+
+1. **Prefix type names during import** (rule 1): `complexType` and `simpleType` `@name` attributes are now prefixed alongside elements/groups/attributeGroups, so that type names are consistent with references when the namespace IS in the root document's nsmap.
+2. **Prefix `@base` attributes** (rule 4): Extension/restriction `@base` values are now prefixed using the same logic as `@type`.
+3. **Resolve cross-namespace references** (rule 5, new): After rules 1–4, all prefixed `@type`, `@base`, `@ref`, and `@substitutionGroup` values are remapped through the imported schema's nsmap. The prefix is resolved to a namespace URI, then looked up in the root document's nsmap:
+   - If the root has a prefix for that namespace → rewrite to use root's prefix
+   - If the root uses it as default namespace or doesn't define it → strip the prefix (since types from that namespace were merged without prefix)
+4. **Template `inherited_elements` macro**: No longer strips the namespace prefix from the base type name when looking up the parent type, since both names and references now use the same consistent prefix scheme.
+
+**Example**: When processing SFW_1_1.xsd (which only defines `tdt:` in its nsmap), TEC_3_4.xsd's reference `type="mmc:MessageManagementContainer"` is now correctly stripped to `type="MessageManagementContainer"` (because MMC's namespace has no prefix in SFW). Meanwhile `type="tdt:DateTime"` correctly keeps its prefix (because `tdt:` IS defined in SFW's nsmap).
+
+---
+
 ## 📝 Licence
 
 AGPL-3.0-or-later  

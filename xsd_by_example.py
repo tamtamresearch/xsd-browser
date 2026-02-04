@@ -135,10 +135,12 @@ class ImportResolver:
 
             # pokud máme prefix, přepíšeme name/ref bez prefixu
             if add_prefix:
-                # 1) Prefixujeme jen elementy, groupy a attributeGroup – ne typy
+                # 1) Prefixujeme jména definic
                 for el in xpath(
                     include_schema,
-                    "xsd:element[@name] | xsd:group[@name] | xsd:attributeGroup[@name]",
+                    "xsd:element[@name] | xsd:group[@name]"
+                    " | xsd:attributeGroup[@name]"
+                    " | xsd:complexType[@name] | xsd:simpleType[@name]",
                 ):
                     if ":" not in el.attrib["name"]:
                         el.attrib["name"] = add_prefix + el.attrib["name"]
@@ -153,6 +155,35 @@ class ImportResolver:
                     t = el.attrib["type"]
                     if ":" not in t and not t.startswith("xsd:"):
                         el.attrib["type"] = add_prefix + t
+
+                # 4) Prefixujeme base v extension/restriction
+                for el in xpath(include_schema, "//*[@base]"):
+                    b = el.attrib["base"]
+                    if ":" not in b and not b.startswith("xsd:"):
+                        el.attrib["base"] = add_prefix + b
+
+            # 5) Přemapujeme cross-namespace prefixy podle hlavního dokumentu
+            # Např. TEC používá mmc:MessageManagementContainer, ale root nemá
+            # mmc: prefix → stripneme na MessageManagementContainer
+            import_nsmap = include_schema.nsmap
+            root_ns_to_prefix = {
+                n: p for p, n in self.main_doc.getroot().nsmap.items()
+            }
+            for attr in ("type", "base", "ref", "substitutionGroup"):
+                for el in xpath(include_schema, f"//*[@{attr}]"):
+                    val = el.attrib[attr]
+                    if ":" not in val:
+                        continue
+                    prefix, local = val.split(":", 1)
+                    ref_ns = import_nsmap.get(prefix)
+                    if not ref_ns or ref_ns == XSD:
+                        continue  # xsd: types or unknown prefix
+                    root_prefix = root_ns_to_prefix.get(ref_ns)
+                    if root_prefix:
+                        el.attrib[attr] = root_prefix + ":" + local
+                    else:
+                        # Namespace is default or not in root → strip prefix
+                        el.attrib[attr] = local
 
             # přidáme obsah importovaného schema do hlavního
             for el in include_schema:
