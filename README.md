@@ -126,6 +126,18 @@ Pokud importované schéma používá namespace bez prefixu, nástroj jej nepře
 
 ---
 
+## Changelog
+
+### Fix: `extended_by` macro not finding derived types
+
+The "Extended by" section on complex type pages was always empty due to an XPath bug in `main.html.j2`.
+
+**Root cause**: The XPath expression used `local-name(@base)` to try to extract the local part of the `@base` attribute's *value* (e.g., `"ApplicationRootMessageML"` from `"tsf:ApplicationRootMessageML"`). However, `local-name()` returns the local name of the *attribute node itself* — which is always the string `"base"`. The condition was therefore never true, and derived types were never displayed.
+
+**Fix**: Replaced `local-name(@base)` with `substring-after(@base, ':')`, which correctly extracts the local part from prefixed attribute values. The existing `or @base="{name}"` fallback continues to handle the unprefixed case.
+
+**Example**: For the abstract type `ApplicationRootMessageML`, types like `TECMessage` (which declare `<xs:extension base="tsf:ApplicationRootMessageML">`) are now correctly listed under "Extended by" when present in the merged schema.
+
 ## 📝 Licence
 
 AGPL-3.0-or-later  

@@ -617,7 +617,7 @@
         {% set local = type_name.split(":")[-1] %}
         {% set derived = doc|xpath(
             '//xsd:complexType[(xsd:simpleContent|xsd:complexContent)/xsd:extension[' ~
-            'local-name(@base)="{}" or @base="{}"]]'.format(local, type_name)
+            'substring-after(@base, ":")="{}" or @base="{}"]]'.format(local, type_name)
         ) %}
         {% set derived = derived|rejectattr("attrib.name", "equalto", type_name)|list %}
 
