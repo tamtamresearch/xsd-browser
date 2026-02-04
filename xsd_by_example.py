@@ -3,29 +3,35 @@
 # (c) 2023 David Koňařík
 
 import sys
+from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
-from collections import defaultdict
 
+import jinja2
 import lxml.etree
 import lxml.objectify
-import jinja2
+
 
 def log(msg):
     print(f"[INFO] {msg}", file=sys.stderr)
+
 
 def parse_xml(path):
     log(f"Načítám XML: {path}")
     return lxml.etree.parse(path)
 
+
 XSD = "http://www.w3.org/2001/XMLSchema"
+
 
 def xpath(elem, query):
     return elem.xpath(query, namespaces={"xsd": XSD})
 
+
 def xpath_one(elem, query):
     results = xpath(elem, query)
     return None if len(results) == 0 else results[0]
+
 
 def prettyprint_xml(elem):
     elem = deepcopy(elem)
@@ -36,6 +42,7 @@ def prettyprint_xml(elem):
         lxml.etree.cleanup_namespaces(elem)
     return lxml.etree.tostring(elem, pretty_print=True).decode()
 
+
 def elem_type(elem):
     return {
         "element": "element",
@@ -45,6 +52,7 @@ def elem_type(elem):
         "attributeGroup": "attribute-group",
     }[elem.tag.split("}")[1]]
 
+
 def elem_path(elem):
     path = []
     while elem is not None:
@@ -52,6 +60,7 @@ def elem_path(elem):
             path.append(elem.attrib["name"])
         elem = elem.getparent()
     return path
+
 
 def elem_path_attrs(elem):
     path = elem_path(elem)
@@ -61,6 +70,7 @@ def elem_path_attrs(elem):
         "data-path": "/".join(path),
     }
 
+
 def elem_name_attrs(elem):
     attrs = {}
     if "name" in elem.attrib:
@@ -69,6 +79,7 @@ def elem_name_attrs(elem):
     if parent is not None and parent.tag == f"{{{XSD}}}schema":
         attrs["data-belowroot"] = True
     return attrs
+
 
 class ImportResolver:
     def __init__(self, main_doc):
@@ -89,7 +100,9 @@ class ImportResolver:
             include_schema = xpath_one(include_doc, "//xsd:schema")
 
             # zjistíme namespace
-            ns = include_el.attrib.get("namespace") or include_schema.attrib.get("targetNamespace")
+            ns = include_el.attrib.get("namespace") or include_schema.attrib.get(
+                "targetNamespace"
+            )
             add_prefix = ""
 
             if ns:
@@ -101,7 +114,9 @@ class ImportResolver:
 
                     if prefix is None:
                         # default namespace → nepřepisujeme
-                        log(f"Namespace {ns} je defaultní (bez prefixu) – nepřepisuji @name/@ref")
+                        log(
+                            f"Namespace {ns} je defaultní (bez prefixu) – nepřepisuji @name/@ref"
+                        )
                         add_prefix = ""
                     else:
                         # máme prefix → použijeme ho
@@ -121,8 +136,10 @@ class ImportResolver:
             # pokud máme prefix, přepíšeme name/ref bez prefixu
             if add_prefix:
                 # 1) Prefixujeme jen elementy, groupy a attributeGroup – ne typy
-                for el in xpath(include_schema,
-                                "xsd:element[@name] | xsd:group[@name] | xsd:attributeGroup[@name]"):
+                for el in xpath(
+                    include_schema,
+                    "xsd:element[@name] | xsd:group[@name] | xsd:attributeGroup[@name]",
+                ):
                     if ":" not in el.attrib["name"]:
                         el.attrib["name"] = add_prefix + el.attrib["name"]
 
@@ -136,12 +153,13 @@ class ImportResolver:
                     t = el.attrib["type"]
                     if ":" not in t and not t.startswith("xsd:"):
                         el.attrib["type"] = add_prefix + t
-            
+
             # přidáme obsah importovaného schema do hlavního
             for el in include_schema:
                 if el.tag == f"{{{XSD}}}annotation":
                     continue
                 self.main_schema_el.append(el)
+
 
 def main():
     if len(sys.argv) != 3:
@@ -166,18 +184,19 @@ def main():
 
     log("Inicializuji Jinja2 šablonu…")
     template_env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(Path(__file__).parent),
-        autoescape=True
+        loader=jinja2.FileSystemLoader(Path(__file__).parent), autoescape=True
     )
     template_env.add_extension("jinja2.ext.do")
-    template_env.filters.update({
-        "xpath": xpath,
-        "xpath_one": xpath_one,
-        "prettyprint_xml": prettyprint_xml,
-        "elem_type": elem_type,
-        "elem_path_attrs": elem_path_attrs,
-        "elem_name_attrs": elem_name_attrs,
-    })
+    template_env.filters.update(
+        {
+            "xpath": xpath,
+            "xpath_one": xpath_one,
+            "prettyprint_xml": prettyprint_xml,
+            "elem_type": elem_type,
+            "elem_path_attrs": elem_path_attrs,
+            "elem_name_attrs": elem_name_attrs,
+        }
+    )
 
     template = template_env.get_template("main.html.j2")
 
@@ -192,6 +211,7 @@ def main():
     output_path.write_text(output, encoding="utf-8")
 
     log("Hotovo.")
+
 
 if __name__ == "__main__":
     main()
