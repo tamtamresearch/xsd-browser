@@ -1,6 +1,6 @@
 # XSD by Example
 
-`xsd_by_example.py` vezme XML Schema Definition (XSD) a vygeneruje přehledný HTML dokument, který ukazuje **příklad instance** odpovídající danému schématu.  
+`xsd_by_example.py` vezme XML Schema Definition (XSD) a vygeneruje přehledný HTML dokument, který ukazuje **příklad instance** odpovídající danému schématu.
 Výstup kombinuje ukázkový XML dokument s anotacemi, takže je snadné pochopit strukturu, povinné prvky, typy a vazby.
 
 Je to alternativa ke klasickým grafickým generátorům XSD dokumentace – cílem je být **čitelnější, kompaktnější a intuitivnější**.
@@ -10,7 +10,9 @@ Je to alternativa ke klasickým grafickým generátorům XSD dokumentace – cí
 ## 📦 Funkce
 
 - Načítá hlavní XSD a všechny `<xsd:import>` / `<xsd:include>`
-- Zachovává namespace prefixy definované v hlavním XSD
+- **Globální registr prefixů**: sbírá namespace→prefix mapování ze všech importovaných schémat, nejen z hlavního XSD. Tranzitivní importy (např. SFW → TEC → MMC) tak dostanou správné prefixy, i když je hlavní schéma nedeklaruje.
+- Pokud žádné schéma nedeklaruje prefix pro daný namespace, odvodí ho z URI (např. `http://…/TEC_3_4` → `tec`)
+- Typy z root namespace zůstávají bez prefixu; všechny ostatní importované typy jsou prefixovány
 - Generuje HTML pomocí Jinja2 šablony
 - Loguje průběh zpracování (na `stderr`)
 - Výstup ukládá do souboru
@@ -25,55 +27,8 @@ Příklad:
 
 python3 xsd_by_example.py schema/SFW_1_1.xsd out.html
 
-- `input.xsd` – hlavní XSD soubor  
-- `output.html` – cesta k výslednému HTML souboru  
-
-Logy se vypisují na `stderr`, aby nerušily HTML výstup.
-
----
-
-## ⚡ Použití s uv
-
-Projekt lze pohodlně spouštět pomocí **uv**, které se stará o virtuální prostředí i závislosti.
-
-### Instalace uv
-
-Linux/macOS:
-
-Jasně, Petr — tady máš hotové README.md, připravené k okamžitému vložení.
-Je čisté, přehledné a obsahuje i sekci pro uv.
-
-# XSD by Example
-
-`xsd_by_example.py` vezme XML Schema Definition (XSD) a vygeneruje přehledný HTML dokument, který ukazuje **příklad instance** odpovídající danému schématu.  
-Výstup kombinuje ukázkový XML dokument s anotacemi, takže je snadné pochopit strukturu, povinné prvky, typy a vazby.
-
-Je to alternativa ke klasickým grafickým generátorům XSD dokumentace – cílem je být **čitelnější, kompaktnější a intuitivnější**.
-
----
-
-## 📦 Funkce
-
-- Načítá hlavní XSD a všechny `<xsd:import>` / `<xsd:include>`
-- Zachovává namespace prefixy definované v hlavním XSD
-- Generuje HTML pomocí Jinja2 šablony
-- Loguje průběh zpracování (na `stderr`)
-- Výstup ukládá do souboru
-
----
-
-## 🧭 Použití
-
-
-python3 xsd_by_example.py input.xsd output.html
-
-Příklad:
-
-
-python3 xsd_by_example.py schema/SFW_1_1.xsd out.html
-
-- `input.xsd` – hlavní XSD soubor  
-- `output.html` – cesta k výslednému HTML souboru  
+- `input.xsd` – hlavní XSD soubor
+- `output.html` – cesta k výslednému HTML souboru
 
 Logy se vypisují na `stderr`, aby nerušily HTML výstup.
 
@@ -118,15 +73,23 @@ Výhody:
 
 ## ⚠️ Omezení
 
-Tento nástroj vznikl během víkendu a pokrývá jen část XSD specifikace.  
+Tento nástroj vznikl během víkendu a pokrývá jen část XSD specifikace.
 Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolovat.
-
-Namespace logika je zjednodušená – nástroj **nepřidává nové prefixy**, pouze používá ty, které jsou definované v hlavním XSD.  
-Pokud importované schéma používá namespace bez prefixu, nástroj jej nepřemapuje.
 
 ---
 
 ## Changelog
+
+### Globální registr namespace prefixů
+
+Namespace prefixy se nově sbírají ze **všech** importovaných schémat, nejen z hlavního XSD. To řeší problém, kdy tranzitivní importy (např. SFW → TEC → MMC) ztrácely prefixy, protože hlavní schéma je nedeklarovalo.
+
+- `ImportResolver` udržuje globální `ns_to_prefix` slovník, který se plní z `nsmap` každého načteného schématu
+- Pokud žádné schéma nedeklaruje prefix pro daný namespace, odvodí se z URI (např. `http://…/TEC_3_4` → `tec`)
+- Typy z root namespace zůstávají bez prefixu; všechny ostatní importy jsou prefixovány
+- Cross-namespace reference (např. `mmc:MessageManagementContainer` uvnitř TEC) se přemapují přes globální registr; reference zpět na root namespace se stripují na neprefixovanou formu
+
+**Příklad**: Při zpracování SFW_1_1.xsd se nyní TEC typy zobrazují jako `tec:TECMessage`, MMC typy jako `mmc:MessageManagementContainer`, LRC typy jako `lrc:LocationReferencingContainer` atd. Dříve byly tyto typy buď neprefixované, nebo nesprávně zpracované.
 
 ### Fix: `extended_by` macro not finding derived types
 
@@ -165,5 +128,5 @@ This caused the JavaScript `<xbe-ref>` lookup to search for `mmc:MessageManageme
 
 ## 📝 Licence
 
-AGPL-3.0-or-later  
+AGPL-3.0-or-later
 (c) 2023 David Koňařík

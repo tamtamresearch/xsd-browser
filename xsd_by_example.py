@@ -86,6 +86,32 @@ class ImportResolver:
         self.main_doc = main_doc
         self.main_schema_el = xpath_one(main_doc, "//xsd:schema")
         self.imported = set()
+        # Global namespace → prefix registry
+        self.ns_to_prefix = {}
+        self.root_target_ns = self.main_schema_el.attrib.get("targetNamespace")
+        # Seed from root document's nsmap
+        for pfx, ns_uri in main_doc.getroot().nsmap.items():
+            if pfx is not None and ns_uri != XSD and ns_uri not in self.ns_to_prefix:
+                self.ns_to_prefix[ns_uri] = pfx
+
+    def _collect_prefixes_from_schema(self, schema_el):
+        for pfx, ns_uri in schema_el.nsmap.items():
+            if pfx is None or ns_uri == XSD or ns_uri == self.root_target_ns:
+                continue
+            if ns_uri not in self.ns_to_prefix:
+                self.ns_to_prefix[ns_uri] = pfx
+                log(f"Registruji prefix '{pfx}' pro namespace {ns_uri}")
+
+    def _derive_prefix_from_ns(self, ns_uri):
+        last_part = ns_uri.rstrip("/").rsplit("/", 1)[-1]
+        base = last_part.split("_", 1)[0].lower()
+        candidate = base
+        counter = 2
+        used_prefixes = set(self.ns_to_prefix.values())
+        while candidate in used_prefixes:
+            candidate = f"{base}{counter}"
+            counter += 1
+        return candidate
 
     def handle_imports(self, doc, path):
         for include_el in xpath(doc, "xsd:include | xsd:import"):
@@ -99,36 +125,25 @@ class ImportResolver:
             include_doc = lxml.etree.parse(include_path)
             include_schema = xpath_one(include_doc, "//xsd:schema")
 
-            # zjistíme namespace
+            # Collect prefixes from imported schema into global registry
+            self._collect_prefixes_from_schema(include_schema)
+
+            # Determine namespace and prefix for this import
             ns = include_el.attrib.get("namespace") or include_schema.attrib.get(
                 "targetNamespace"
             )
             add_prefix = ""
 
-            if ns:
-                # mapujeme namespace → prefix podle hlavního dokumentu
-                ns_to_prefix = {n: p for p, n in self.main_doc.getroot().nsmap.items()}
-
-                if ns in ns_to_prefix:
-                    prefix = ns_to_prefix[ns]
-
-                    if prefix is None:
-                        # default namespace → nepřepisujeme
-                        log(
-                            f"Namespace {ns} je defaultní (bez prefixu) – nepřepisuji @name/@ref"
-                        )
-                        add_prefix = ""
-                    else:
-                        # máme prefix → použijeme ho
-                        add_prefix = prefix + ":"
-                        log(f"Používám prefix '{prefix}:' pro namespace {ns}")
-
-                else:
-                    # namespace není v hlavním XSD → ignorujeme
-                    log(f"Namespace {ns} není v hlavním XSD – nepřepisuji @name/@ref")
-                    add_prefix = ""
-            else:
-                add_prefix = ""
+            if ns and ns != self.root_target_ns:
+                prefix = self.ns_to_prefix.get(ns)
+                if not prefix:
+                    prefix = self._derive_prefix_from_ns(ns)
+                    self.ns_to_prefix[ns] = prefix
+                    log(f"Odvozuji prefix '{prefix}' pro namespace {ns}")
+                add_prefix = prefix + ":"
+                log(f"Používám prefix '{add_prefix}' pro namespace {ns}")
+            elif ns == self.root_target_ns:
+                log(f"Namespace {ns} je root – neprefixuji")
 
             # rekurzivně zpracujeme importy uvnitř importovaného souboru
             self.handle_imports(include_doc, include_path)
@@ -162,28 +177,28 @@ class ImportResolver:
                     if ":" not in b and not b.startswith("xsd:"):
                         el.attrib["base"] = add_prefix + b
 
-            # 5) Přemapujeme cross-namespace prefixy podle hlavního dokumentu
-            # Např. TEC používá mmc:MessageManagementContainer, ale root nemá
-            # mmc: prefix → stripneme na MessageManagementContainer
+            # 5) Přemapujeme cross-namespace prefixy podle globálního registru
             import_nsmap = include_schema.nsmap
-            root_ns_to_prefix = {
-                n: p for p, n in self.main_doc.getroot().nsmap.items()
-            }
             for attr in ("type", "base", "ref", "substitutionGroup"):
                 for el in xpath(include_schema, f"//*[@{attr}]"):
                     val = el.attrib[attr]
                     if ":" not in val:
                         continue
-                    prefix, local = val.split(":", 1)
-                    ref_ns = import_nsmap.get(prefix)
+                    local_prefix, local = val.split(":", 1)
+                    ref_ns = import_nsmap.get(local_prefix)
                     if not ref_ns or ref_ns == XSD:
-                        continue  # xsd: types or unknown prefix
-                    root_prefix = root_ns_to_prefix.get(ref_ns)
-                    if root_prefix:
-                        el.attrib[attr] = root_prefix + ":" + local
+                        continue
+                    if ref_ns == self.root_target_ns:
+                        el.attrib[attr] = local  # root namespace → strip prefix
                     else:
-                        # Namespace is default or not in root → strip prefix
-                        el.attrib[attr] = local
+                        registry_prefix = self.ns_to_prefix.get(ref_ns)
+                        if registry_prefix:
+                            el.attrib[attr] = registry_prefix + ":" + local
+                        else:
+                            log(
+                                f"WARNING: No registry prefix for {ref_ns},"
+                                f" keeping '{val}'"
+                            )
 
             # přidáme obsah importovaného schema do hlavního
             for el in include_schema:

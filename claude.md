@@ -39,7 +39,10 @@ xsd-by-example c:\Work\TTR\tpeg\tpeg\working\tec-01\schema\SFW_1_1.xsd output\x.
 2. **Resolve imports** via `ImportResolver` class:
    - Recursively processes `<xs:include>` and `<xs:import>` elements
    - Merges all imported schema definitions into the main document's `<xs:schema>` element
-   - Handles namespace prefix mapping: looks up the imported namespace in the root document's `nsmap` and prefixes `name`/`ref`/`type` attributes accordingly
+   - **Global prefix registry** (`ns_to_prefix` dict): collects namespace→prefix mappings from ALL schemas encountered during import, not just the root. Seeded from the root document's `nsmap`, then extended by `_collect_prefixes_from_schema()` as each imported schema is parsed. This ensures transitive imports (e.g., SFW → TEC → MMC) get proper prefixes even when the root schema doesn't declare them.
+   - **Prefix derivation fallback** (`_derive_prefix_from_ns()`): when no schema declares a prefix for a namespace (e.g., TEC uses default namespace for itself), derives one from the namespace URI (`http://…/TEC_3_4` → `tec`). Avoids collisions by appending a counter.
+   - Root namespace types remain unprefixed; all other imported types get their namespace prefix prepended to `name`/`ref`/`type`/`base` attributes
+   - Cross-namespace references (e.g., `mmc:MessageManagementContainer` inside TEC) are remapped using the global registry; references back to the root namespace are stripped to unprefixed form
    - Skips `<xs:annotation>` elements from imported schemas
    - Tracks already-imported paths to avoid duplicates
 3. **Render** the merged document through the Jinja2 template (`main.html.j2`)
@@ -88,8 +91,9 @@ Generates a **self-contained HTML file** with embedded CSS and JavaScript. The r
 ## Important Notes
 
 - The XSD namespace constant is `http://www.w3.org/2001/XMLSchema` (variable `XSD`)
-- Import resolution rewrites `name`/`ref`/`type` attributes with namespace prefixes when the imported schema's namespace has a prefix in the root document
-- Elements, groups, and attributeGroups get prefixed; types in `@type` get prefixed unless they contain `:` or start with `xsd:`
+- Import resolution rewrites `name`/`ref`/`type`/`base`/`substitutionGroup` attributes with namespace prefixes from the global registry. Only the root document's own types remain unprefixed.
+- Elements, groups, and attributeGroups get prefixed; types in `@type` and `@base` get prefixed unless they already contain `:` or start with `xsd:`
+- The prefix registry is first-come-first-served: if two schemas declare different prefixes for the same namespace, the first one encountered wins
 - Log messages are in Czech (original author's language)
 - The `usages_by_name` dict is passed into the template and mutated during render via the `record_usage` macro and `jinja2.ext.do`
 - Only one app file (`xsd_by_example.py`) -- all changes go there or in `main.html.j2`
