@@ -1039,6 +1039,9 @@
         <h1>{{ main_xml_path.name }}</h1>
 
         <form onsubmit="onElementFormSubmit()">
+            <label for=root-element-name
+                   title="Global elements that can serve as XML document roots. Local elements nested in types are not listed."
+                   >Root element:</label>
             <input type=text
                    list=element-list
                    id=root-element-name
