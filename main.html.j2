@@ -6,6 +6,13 @@
     <meta charset=utf-8>
     <title>XML schema: {{ main_xml_path.name }}</title>
     <script>
+        /**
+         * Builds a hierarchical path by traversing up the DOM tree.
+         * Collects data-name attributes from ancestors until reaching an element
+         * with data-belowroot (direct schema child). Skips TEMPLATE elements.
+         * @param {HTMLElement} el - Starting element
+         * @returns {string[]} Path segments from innermost to outermost (e.g., ["ChildElem", "ParentType"])
+         */
         function domElementPath(el) {
             const path = [];
             while(el.parentElement) {
@@ -20,6 +27,15 @@
             return path;
         }
 
+        /**
+         * Finds the best matching template for a reference path.
+         * Tries progressively shorter paths (full path, then dropping segments from end)
+         * to find the most specific template. Falls back to name-only match if no
+         * path-based match is found.
+         * @param {string|null} type - Template type filter (e.g., "element-contents", "type-contents")
+         * @param {string[]} path - Path segments to match against template data-path attributes
+         * @returns {HTMLTemplateElement|null} Matching template element or null
+         */
         function closestTemplateForPath(type, path) {
             for(let i = path.length; i > 0; i--) {
                 const cutPath = path.slice(0, i);
@@ -36,6 +52,12 @@
                 + `[data-name="${path[0]}"]`);
         }
 
+        /**
+         * Removes empty attribute container boxes after template insertion.
+         * Cleans up boxes (.complex-type-attrs, .extension-attrs, .restriction-attrs,
+         * .attribute-group) that contain no .attribute children.
+         * @param {HTMLElement} rootEl - Root element to search within
+         */
         function removeEmptyBoxes(rootEl) {
             rootEl.querySelectorAll(".complex-type-attrs, .extension-attrs,"
                 + ".restriction-attrs, .attribute-group")
@@ -48,11 +70,23 @@
                 });
         }
 
+        /**
+         * Removes all child elements from a parent element.
+         * @param {HTMLElement} el - Parent element to clear
+         */
         function removeChildren(el) {
             [...el.children].forEach(c => el.removeChild(c));
         }
 
+        /**
+         * Custom element that resolves XSD references by finding and cloning
+         * matching template content. Core mechanism for lazy-loading schema documentation.
+         * @customElement xbe-ref
+         * @attr {string} ref - Name of the referenced element/type/group
+         * @attr {string} [type] - Template type filter (e.g., "element-contents", "type-contents")
+         */
         class ReferenceElement extends HTMLElement {
+            /** @inheritdoc */
             connectedCallback() {
                 if(!this.isConnected) return; // MDN says I should have this
 
@@ -74,7 +108,15 @@
         }
         customElements.define("xbe-ref", ReferenceElement);
 
+        /**
+         * Custom element that creates an expandable/collapsible element view.
+         * Displays the element header with a toggle to show/hide contents.
+         * Also recursively displays elements from substitution groups.
+         * @customElement xbe-collapsible-element-ref
+         * @attr {string} element - Name of the XSD element to display
+         */
         class CollapsipleElementRefElement extends HTMLElement {
+            /** @inheritdoc */
             connectedCallback() {
                 if(!this.isConnected) return;
 
@@ -107,6 +149,13 @@
                 addFromSubstGroup(this, element);
             }
 
+            /**
+             * Creates a collapsible details element for an XSD element.
+             * Clones the collapsible-element-ref-template, substitutes the element
+             * name into placeholders, and appends to the container.
+             * @param {HTMLElement} base - Container to append the element to
+             * @param {string} element - Name of the XSD element
+             */
             addElement(base, element) {
                 const template = document.getElementById(
                     "collapsible-element-ref-template");
@@ -130,6 +179,12 @@
         customElements.define("xbe-collapsible-element-ref",
             CollapsipleElementRefElement);
 
+        /**
+         * Handles toggle events on collapsible element details.
+         * Lazy-loads element contents when opened (creates xbe-ref),
+         * removes content when closed to save memory.
+         * @param {HTMLDetailsElement} detailEl - The details element being toggled
+         */
         function onCollapsibleElementRefToggle(detailEl) {
             const elemName = detailEl.dataset.element;
             const contentsEl = detailEl.querySelector(":scope > .element-contents");
@@ -146,13 +201,21 @@
             }
         }
 
+        /**
+         * Form submit handler for element picker.
+         * Navigates to the selected element by updating URL hash.
+         * @returns {false} Prevents default form submission
+         */
         function onElementFormSubmit() {
             const element = document.getElementById("root-element-name").value;
             window.location.hash = `#element-${element}`;
             return false;
         }
 
-        // Auto-navigate when user selects an element from the datalist dropdown
+        /**
+         * Auto-navigates when user selects an element from the datalist dropdown.
+         * Checks if input value exactly matches a datalist option; if so, navigates.
+         */
         function onElementInputChange() {
             const input = document.getElementById("root-element-name");
             const datalist = document.getElementById("element-list");
@@ -162,12 +225,21 @@
             }
         }
 
+        /**
+         * Replaces the main content area with new content.
+         * @param {DocumentFragment|HTMLElement} el - Content to display
+         */
         function setMainContent(el) {
             const mainEl = document.querySelector("main");
             removeChildren(mainEl);
             mainEl.appendChild(el);
         }
 
+        /**
+         * Displays an element's full documentation in the main area.
+         * Shows element definition, type information, and collapsible instance view.
+         * @param {string} element - Name of the XSD element to display
+         */
         function showElement(element) {
             if(!document.querySelector(
                 `template[data-type="element-contents"][data-name="${element}"]`)) {
@@ -190,6 +262,11 @@
             setMainContent(contentEl);
         }
 
+        /**
+         * Displays a type's full documentation in the main area.
+         * Shows type definition, attributes, child elements, and inheritance info.
+         * @param {string} type - Name of the XSD type to display
+         */
         function showType(type) {
             if(!document.querySelector(
                 `template[data-type="type-contents"][data-name="${type}"]`)) {
@@ -210,6 +287,11 @@
             setMainContent(contentEl);
         }
 
+        /**
+         * Displays a group's full documentation in the main area.
+         * Shows group definition and contained elements.
+         * @param {string} group - Name of the XSD group to display
+         */
         function showGroup(group) {
             if(!document.querySelector(
                 `template[data-type="group-contents"][data-name="${group}"]`)) {
@@ -230,13 +312,26 @@
             setMainContent(contentEl);
         }
 
+        /** @type {string} Current URL hash (without #) for state tracking */
         let currentHash = '';
+
+        /** @type {boolean} Flag to prevent saving state while restoring */
         let restoringState = false;
 
+        /**
+         * Returns the localStorage key for storing details open/close state.
+         * Key is unique per document (based on document.title).
+         * @returns {string} Storage key in format "xbe-details-{title}"
+         */
         function getDetailsStorageKey() {
             return 'xbe-details-' + document.title;
         }
 
+        /**
+         * Retrieves all saved details state from localStorage.
+         * @returns {Object.<string, {openElements: string[], usagesOpen: boolean}>}
+         *          Map of hash -> state object
+         */
         function getAllDetailsState() {
             try {
                 return JSON.parse(localStorage.getItem(getDetailsStorageKey())) || {};
@@ -245,6 +340,12 @@
             }
         }
 
+        /**
+         * Saves the current open/close state of all details elements for a hash.
+         * Records which collapsible elements are expanded and whether the
+         * "Used by" box is open.
+         * @param {string} hash - URL hash to save state for
+         */
         function saveDetailsStateForHash(hash) {
             if (!hash) return;
             const state = getAllDetailsState();
@@ -263,10 +364,20 @@
             } catch(e) {}
         }
 
+        /**
+         * Saves details state for the current hash.
+         * Convenience wrapper around saveDetailsStateForHash.
+         */
         function saveDetailsState() {
             saveDetailsStateForHash(currentHash);
         }
 
+        /**
+         * Restores saved open/close state of details elements for current hash.
+         * Opens previously expanded elements in a loop (since opening a parent
+         * may reveal children that also need restoring). Sets restoringState flag
+         * to prevent save-on-toggle during restoration.
+         */
         function restoreDetailsState() {
             if (!currentHash) return;
             const state = getAllDetailsState();
@@ -299,6 +410,14 @@
             }
         }
 
+        /**
+         * Main navigation handler - parses URL hash and displays appropriate content.
+         * Saves state for previous hash before switching, then restores state for
+         * new hash after content is built. Supports hash formats:
+         * - #element-{name} -> showElement()
+         * - #type-{name} -> showType()
+         * - #group-{name} -> showGroup()
+         */
         function showFromHash() {
             if (currentHash) {
                 saveDetailsStateForHash(currentHash);
@@ -315,8 +434,11 @@
             restoreDetailsState();
         }
 
+        // Initialize: handle hash on page load and hash changes
         window.addEventListener("hashchange", showFromHash);
         window.addEventListener("DOMContentLoaded", showFromHash);
+
+        // Save details state on every toggle (capture phase to catch before bubbling)
         document.addEventListener('toggle', function(e) {
             if (restoringState) return;
             if (e.target.closest('main')) saveDetailsState();
