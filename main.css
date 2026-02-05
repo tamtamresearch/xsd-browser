@@ -8,7 +8,7 @@ body {
     background-color: #fafafa;
 }
 
-.element-head, .element-end, .attribute, code {
+.element-head, .element-end, .attribute, code, .simple {
     font-family: "SF Mono", "Consolas", "Monaco", "Menlo", monospace;
     font-size: 13px;
 }
