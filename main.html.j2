@@ -636,8 +636,19 @@
             margin-bottom: 10px;
         }
 
-        .usages-box summary {
+        .usages-box > summary::marker {
+            display: none;
+        }
+        .usages-box > summary {
+            display: flex;
             margin-bottom: 5px;
+        }
+        .usages-box > summary::before {
+            content: "▸";
+            padding-right: 5px;
+        }
+        .usages-box[open] > summary::before {
+            content: "▾";
         }
 
         .usages-box .usages {
