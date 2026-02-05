@@ -858,7 +858,7 @@
     {% macro complex_type_contents(ct_el, on) %}
         {% call el_div("complex-type-contents", ct_el) %}
             {{ complex_type_origin(ct_el) }}
-            {{ extended_by(ct_el.attrib.name) }}
+            {% if ct_el.attrib.name %}{{ extended_by(ct_el.attrib.name) }}{% endif %}
             {{ child_annotations(ct_el) }}
 
             {# 1) Vlastní elementy typu #}

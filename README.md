@@ -80,6 +80,10 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Fix: Crash on schemas with anonymous (inline)
+
+Fix crash on schemas with anonymous (inline) complex types - `extended_by` macro now checks for `name` attribute before accessing it
+
 ### Fix: "Used by" links for local elements
 
 The "Used by" section showed broken links for **local elements** (elements defined inside complex types). Clicking on them displayed "No such element" alert instead of navigating to the element.
