@@ -152,6 +152,16 @@
             return false;
         }
 
+        // Auto-navigate when user selects an element from the datalist dropdown
+        function onElementInputChange() {
+            const input = document.getElementById("root-element-name");
+            const datalist = document.getElementById("element-list");
+            const options = [...datalist.options].map(o => o.value);
+            if (options.includes(input.value)) {
+                window.location.hash = `#element-${input.value}`;
+            }
+        }
+
         function setMainContent(el) {
             const mainEl = document.querySelector("main");
             removeChildren(mainEl);
@@ -1045,7 +1055,8 @@
             <input type=text
                    list=element-list
                    id=root-element-name
-                   placeholder="Element name">
+                   placeholder="Element name"
+                   oninput="onElementInputChange()">
             <datalist id=element-list>
                 {% for elem_el in doc|xpath("xsd:element[@name]") %}
                     <option>{{ elem_el.attrib.name }}</option>
