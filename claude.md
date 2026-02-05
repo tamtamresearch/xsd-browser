@@ -8,7 +8,9 @@ Renders XSD (XML Schema Definition) files into interactive single-page HTML docu
 
 ```
 xsd_by_example.py   - Main (and only) application file. Python CLI entry point.
-main.html.j2        - Jinja2 template that generates the output HTML (contains HTML, CSS, JS, and Jinja2 macros).
+main.html.j2        - Jinja2 template that generates the output HTML (uses includes for JS/CSS, contains Jinja2 macros).
+main.js             - JavaScript code included by main.html.j2 (custom elements, navigation, state management).
+main.css            - CSS styles included by main.html.j2 (typography, layout, components).
 pyproject.toml       - Project config. Entry point: xsd-by-example = "xsd_by_example:main"
 output/              - Generated HTML output directory (not tracked in git).
 ```
@@ -54,21 +56,22 @@ Key utility functions exposed as Jinja2 filters:
 - `elem_type(elem)` - Maps XSD tag to category: `element`, `type`, `group`, `attribute-group`
 - `elem_path_attrs(elem)` / `elem_name_attrs(elem)` - Generate HTML `data-*` attributes for DOM identification
 
-### Template side (`main.html.j2`)
+### Template side (`main.html.j2`, `main.js`, `main.css`)
 
-Generates a **self-contained HTML file** with embedded CSS and JavaScript. The rendering architecture uses HTML `<template>` elements and Web Components:
+Generates a **self-contained HTML file** with embedded CSS and JavaScript. The template uses `{% include %}` directives to pull in `main.js` and `main.css` at render time. The rendering architecture uses HTML `<template>` elements and Web Components:
 
-**Jinja2 macros (server-side, during render):**
+**Jinja2 macros (server-side, during render) - in `main.html.j2`:**
 - Iterates over all named XSD elements, complex types, simple types, groups, and attribute groups
 - For each, generates `<template>` elements with `data-type` and `data-path` attributes
 - Template types: `element-head`, `element-contents`, `type-attrs`, `type-contents`, `group-contents`, `attribute-group`, `*-usages`
 - Tracks cross-references via `usages_by_name` (defaultdict of sets)
 
-**JavaScript (client-side, in browser):**
+**JavaScript (client-side, in browser) - in `main.js`:**
 - `<xbe-ref>` custom element - Resolves references by finding matching `<template>` elements via `data-type`/`data-path` and cloning their content
 - `<xbe-collapsible-element-ref>` custom element - Creates expandable/collapsible element views with substitution group support
 - Hash-based navigation: `#element-NAME`, `#type-NAME`, `#group-NAME`
 - Element picker via `<datalist>` autocomplete in the header
+- State persistence via localStorage (details open/close state)
 
 **Key Jinja2 macros:**
 - `complex_type_contents` / `complex_type_attrs` - Render complex type children and attributes (handles extension/restriction inheritance)
@@ -96,4 +99,4 @@ Generates a **self-contained HTML file** with embedded CSS and JavaScript. The r
 - The prefix registry is first-come-first-served: if two schemas declare different prefixes for the same namespace, the first one encountered wins
 - Log messages are in Czech (original author's language)
 - The `usages_by_name` dict is passed into the template and mutated during render via the `record_usage` macro and `jinja2.ext.do`
-- Only one app file (`xsd_by_example.py`) -- all changes go there or in `main.html.j2`
+- Only one app file (`xsd_by_example.py`) -- all changes go there or in the template files (`main.html.j2`, `main.js`, `main.css`)

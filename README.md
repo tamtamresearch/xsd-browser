@@ -80,6 +80,22 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Refactor: Externalize CSS and JS from main.html.j2
+
+Split the monolithic `main.html.j2` template into separate files for better maintainability:
+
+- **main.js** - All JavaScript code (~400 lines) including custom elements, navigation, and state management
+- **main.css** - All CSS styles (~340 lines) for typography, layout, and components
+- **main.html.j2** - Now uses `{% include 'main.js' %}` and `{% include 'main.css' %}` directives
+
+**Benefits**:
+- Better IDE support with proper syntax highlighting and linting for JS/CSS
+- Easier navigation - jump directly to the file you need
+- Separation of concerns - logic, styling, and structure are separated
+- Tooling - can run eslint/prettier on JS, stylelint on CSS
+
+**Output unchanged**: The generated HTML is still a single self-contained file with all CSS and JS embedded inline. No Python code changes required - the existing `FileSystemLoader` already searches the template directory.
+
 ### Fix: Crash on schemas with anonymous (inline)
 
 Fix crash on schemas with anonymous (inline) complex types - `extended_by` macro now checks for `name` attribute before accessing it
