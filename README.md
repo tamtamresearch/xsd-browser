@@ -80,6 +80,22 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Fix: "Used by" links for local elements
+
+The "Used by" section showed broken links for **local elements** (elements defined inside complex types). Clicking on them displayed "No such element" alert instead of navigating to the element.
+
+**Root cause**: Mismatch between how usages are recorded vs how templates are identified:
+
+1. Usage recording uses only the element's `name` attribute (e.g., `optionGeographicLocationReferenceLink`)
+2. Template generation uses full hierarchical path via `elem_path_attrs()` in `data-path` (e.g., `ParentType/optionGeographicLocationReferenceLink`)
+3. JavaScript lookup searched by `data-path`, which didn't match the recorded name for local elements
+
+For global elements (direct schema children), `data-path` equals the name, so links worked. For local elements, they were always broken.
+
+**Fix**: Changed JavaScript navigation functions (`showElement()`, `showType()`, `showGroup()`) to search by `data-name` attribute instead of `data-path`. The `data-name` attribute always equals the element's name, matching the usage recording.
+
+**Example**: When viewing `#type-glr:GeographicLocationReference`, the "Used by" link for `optionGeographicLocationReferenceLink` now correctly navigates to that element.
+
 ### Persist details open/close state to localStorage
 
 The open/close state of `<details>` elements (collapsible element refs and "Used by" boxes) is now persisted per hash in localStorage and restored on navigation.
