@@ -80,6 +80,23 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Persist details open/close state to localStorage
+
+The open/close state of `<details>` elements (collapsible element refs and "Used by" boxes) is now persisted per hash in localStorage and restored on navigation.
+
+**Features**:
+- Each hash (e.g., `#element-Foo`, `#type-Bar`) independently remembers which elements are expanded
+- State is saved on every toggle and before navigating away
+- Back/forward browser navigation restores the previous expansion state
+- Nested expansions are correctly restored (opening a parent loads children which may also need restoring)
+
+**Implementation**:
+- Storage key: `xbe-details-{document.title}` contains a JSON object keyed by hash
+- Each entry stores `openElements` (array of element names) and `usagesOpen` (boolean)
+- A capture-phase `toggle` listener saves state on every `<details>` toggle
+- `showFromHash()` saves the old hash state before switching, then restores the new hash state after content is built
+- Guard in `onCollapsibleElementRefToggle()` prevents duplicate content when async browser toggle fires after synchronous restore
+
 ### Globální registr namespace prefixů
 
 Namespace prefixy se nově sbírají ze **všech** importovaných schémat, nejen z hlavního XSD. To řeší problém, kdy tranzitivní importy (např. SFW → TEC → MMC) ztrácely prefixy, protože hlavní schéma je nedeklarovalo.

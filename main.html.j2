@@ -134,10 +134,12 @@
             const elemName = detailEl.dataset.element;
             const contentsEl = detailEl.querySelector(":scope > .element-contents");
             if(detailEl.open) {
-                const refEl = document.createElement("xbe-ref");
-                refEl.setAttribute("type", "element-contents");
-                refEl.setAttribute("ref", elemName);
-                contentsEl.appendChild(refEl);
+                if(!contentsEl.querySelector(":scope > xbe-ref")) {
+                    const refEl = document.createElement("xbe-ref");
+                    refEl.setAttribute("type", "element-contents");
+                    refEl.setAttribute("ref", elemName);
+                    contentsEl.appendChild(refEl);
+                }
             } else {
                 const refEl = contentsEl.querySelector(":scope > xbe-ref");
                 if(refEl) refEl.parentElement.removeChild(refEl);
@@ -218,8 +220,81 @@
             setMainContent(contentEl);
         }
 
+        let currentHash = '';
+        let restoringState = false;
+
+        function getDetailsStorageKey() {
+            return 'xbe-details-' + document.title;
+        }
+
+        function getAllDetailsState() {
+            try {
+                return JSON.parse(localStorage.getItem(getDetailsStorageKey())) || {};
+            } catch(e) {
+                return {};
+            }
+        }
+
+        function saveDetailsStateForHash(hash) {
+            if (!hash) return;
+            const state = getAllDetailsState();
+            const openElements = [];
+            document.querySelectorAll('main details.collapsible-element-ref[open]')
+                .forEach(d => {
+                    if (d.dataset.element) openElements.push(d.dataset.element);
+                });
+            const usagesBox = document.querySelector('main details.usages-box');
+            state[hash] = {
+                openElements,
+                usagesOpen: usagesBox ? usagesBox.open : false
+            };
+            try {
+                localStorage.setItem(getDetailsStorageKey(), JSON.stringify(state));
+            } catch(e) {}
+        }
+
+        function saveDetailsState() {
+            saveDetailsStateForHash(currentHash);
+        }
+
+        function restoreDetailsState() {
+            if (!currentHash) return;
+            const state = getAllDetailsState();
+            const hashState = state[currentHash];
+            if (!hashState) return;
+            restoringState = true;
+            try {
+                if (hashState.usagesOpen) {
+                    const usagesBox = document.querySelector('main details.usages-box');
+                    if (usagesBox) usagesBox.open = true;
+                }
+                if (hashState.openElements && hashState.openElements.length > 0) {
+                    const openSet = new Set(hashState.openElements);
+                    let changed = true;
+                    while (changed) {
+                        changed = false;
+                        document.querySelectorAll(
+                            'main details.collapsible-element-ref:not([open])')
+                            .forEach(d => {
+                                if (openSet.has(d.dataset.element)) {
+                                    d.open = true;
+                                    onCollapsibleElementRefToggle(d);
+                                    changed = true;
+                                }
+                            });
+                    }
+                }
+            } finally {
+                restoringState = false;
+            }
+        }
+
         function showFromHash() {
+            if (currentHash) {
+                saveDetailsStateForHash(currentHash);
+            }
             const hash = window.location.hash.substring(1);
+            currentHash = hash;
             if(hash.startsWith("element-")) {
                 showElement(hash.substring(8));
             } else if(hash.startsWith("type-")) {
@@ -227,10 +302,15 @@
             } else if(hash.startsWith("group-")) {
                 showGroup(hash.substring(6));
             }
+            restoreDetailsState();
         }
 
         window.addEventListener("hashchange", showFromHash);
         window.addEventListener("DOMContentLoaded", showFromHash);
+        document.addEventListener('toggle', function(e) {
+            if (restoringState) return;
+            if (e.target.closest('main')) saveDetailsState();
+        }, true);
     </script>
 
     <style>
