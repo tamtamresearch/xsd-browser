@@ -613,7 +613,7 @@
     </template>
 
     <header>
-        <h1>{{ main_xml_path.name }}</h1>
+        <h1><a href="#" onclick="history.pushState(null, '', location.pathname); showFromHash(); return false;">{{ main_xml_path.name }}</a></h1>
 
         <form onsubmit="onElementFormSubmit()">
             <label for=root-element-name
