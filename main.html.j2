@@ -560,6 +560,58 @@
         </div>
     </template>
 
+    <template id=landing-template>
+        <div class=landing>
+            {% set elements = doc|xpath("xsd:element[@name]") %}
+            {% if elements %}
+            <section>
+                <h2>Elements</h2>
+                <ul>
+                    {% for el in elements %}
+                        <li><a href="#element-{{ el.attrib.name }}">{{ el.attrib.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            {% set complex_types = doc|xpath("//xsd:complexType[@name]") %}
+            {% if complex_types %}
+            <section>
+                <h2>Complex Types</h2>
+                <ul>
+                    {% for ct in complex_types %}
+                        <li><a href="#type-{{ ct.attrib.name }}">{{ ct.attrib.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            {% set simple_types = doc|xpath("//xsd:simpleType[@name]") %}
+            {% if simple_types %}
+            <section>
+                <h2>Simple Types</h2>
+                <ul>
+                    {% for st in simple_types %}
+                        <li><a href="#type-{{ st.attrib.name }}">{{ st.attrib.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            {% set groups = doc|xpath("//xsd:group[@name]") %}
+            {% if groups %}
+            <section>
+                <h2>Groups</h2>
+                <ul>
+                    {% for g in groups %}
+                        <li><a href="#group-{{ g.attrib.name }}">{{ g.attrib.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+        </div>
+    </template>
+
     <header>
         <h1>{{ main_xml_path.name }}</h1>
 

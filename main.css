@@ -339,6 +339,33 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
     font-size: 12px;
 }
 
+/* === Landing page === */
+.landing {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.landing section h2 {
+    margin-top: 0;
+}
+
+.landing ul {
+    column-width: 250px;
+    column-gap: 24px;
+    list-style: none;
+    padding-left: 0;
+}
+
+.landing a {
+    overflow-wrap: break-word;
+}
+
+.landing li {
+    break-inside: avoid;
+    padding: 2px 0;
+}
+
 /* === Enumeration documentation === */
 .enum-doc {
     color: #666;

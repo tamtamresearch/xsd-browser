@@ -304,6 +304,16 @@ function showGroup(group) {
     setMainContent(contentEl);
 }
 
+/**
+ * Displays the landing page with categorized links to all definitions.
+ * Shown when no hash is present or hash doesn't match any known prefix.
+ */
+function showLanding() {
+    const template = document.getElementById("landing-template");
+    const contentEl = template.content.cloneNode(true);
+    setMainContent(contentEl);
+}
+
 /** @type {string} Current URL hash (without #) for state tracking */
 let currentHash = '';
 
@@ -422,6 +432,8 @@ function showFromHash() {
         showType(hash.substring(5));
     } else if(hash.startsWith("group-")) {
         showGroup(hash.substring(6));
+    } else {
+        showLanding();
     }
     restoreDetailsState();
 }

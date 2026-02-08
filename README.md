@@ -80,6 +80,10 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Landing page with categorized index of all definitions
+
+When no hash is present (or the hash doesn't match any known definition), a landing page is now displayed instead of a blank content area. It shows all schema definitions as clickable links grouped into sections: Elements, Complex Types, Simple Types, and Groups. Each section uses a responsive multi-column layout. This is especially useful for schemas without root elements, where there was previously no obvious starting point for navigation.
+
 ### Refactor: Externalize CSS and JS from main.html.j2
 
 Split the monolithic `main.html.j2` template into separate files for better maintainability:
