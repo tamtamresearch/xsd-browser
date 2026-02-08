@@ -220,26 +220,46 @@
             {# 2) Zděděné elementy #}
             {% for ext_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
                 {% call el_div("extension", ext_el) %}
-                    <div class=note>Inherited from {{ ext_el.attrib.base }}:</div>
-                    <div class="extension-content inherited">
-                        {{ inherited_elements(ext_el.attrib.base, on) }}
-                    </div>
+                    {% set inherited_content %}{{ inherited_elements(ext_el.attrib.base, on) }}{% endset %}
+                    {% if inherited_content|trim %}
+                        <div class="inherited-section">
+                            <div class=note>Inherited from {{ ext_el.attrib.base }}:</div>
+                            <div class="extension-content inherited">
+                                {{ inherited_content }}
+                            </div>
+                        </div>
+                    {% endif %}
 
-                    <div class=note>New elements:</div>
-                    {{ child_elements(ext_el, on) }}
+                    {% set new_content %}{{ child_elements(ext_el, on) }}{% endset %}
+                    {% if new_content|trim %}
+                        <div class="new-elements-section">
+                            <div class=note>New elements:</div>
+                            {{ new_content }}
+                        </div>
+                    {% endif %}
                 {% endcall %}
             {% endfor %}
 
             {# 3) Restriction #}
             {% for rest_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
                 {% call el_div("restriction", rest_el) %}
-                    <div class=note>Inherited from {{ rest_el.attrib.base }}:</div>
-                    <div class="restriction-content inherited">
-                        {{ inherited_elements(rest_el.attrib.base, on) }}
-                    </div>
+                    {% set inherited_content %}{{ inherited_elements(rest_el.attrib.base, on) }}{% endset %}
+                    {% if inherited_content|trim %}
+                        <div class="inherited-section">
+                            <div class=note>Inherited from {{ rest_el.attrib.base }}:</div>
+                            <div class="restriction-content inherited">
+                                {{ inherited_content }}
+                            </div>
+                        </div>
+                    {% endif %}
 
-                    <div class=note>Allowed elements:</div>
-                    {{ child_elements(rest_el, on) }}
+                    {% set allowed_content %}{{ child_elements(rest_el, on) }}{% endset %}
+                    {% if allowed_content|trim %}
+                        <div class="allowed-elements-section">
+                            <div class=note>Allowed elements:</div>
+                            {{ allowed_content }}
+                        </div>
+                    {% endif %}
                 {% endcall %}
             {% endfor %}
         {% endcall %}
