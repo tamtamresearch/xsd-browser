@@ -609,6 +609,26 @@
                 </ul>
             </section>
             {% endif %}
+
+            {% if ns_to_prefix or root_target_ns %}
+            <section class=landing-prefixes>
+                <h2>Namespaces</h2>
+                <div class=ns-grid>
+                    {% if root_target_ns %}
+                    <div class=ns-card>
+                        <div class="ns-card-prefix default"><em>(default)</em></div>
+                        <div class=ns-card-uri>{{ root_target_ns }}</div>
+                    </div>
+                    {% endif %}
+                    {% for ns, pfx in ns_to_prefix|items|sort(attribute='1') %}
+                    <div class=ns-card>
+                        <div class=ns-card-prefix>{{ pfx }}</div>
+                        <div class=ns-card-uri>{{ ns }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
         </div>
     </template>
 

@@ -377,6 +377,41 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
     padding: 2px 0;
 }
 
+.landing-prefixes {
+    grid-column: 1 / -1;
+}
+
+.ns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.ns-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px 16px;
+    background: #f9fafb;
+}
+
+.ns-card-prefix {
+    font-family: "SF Mono", "Consolas", "Monaco", "Menlo", monospace;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.ns-card-prefix.default {
+    font-weight: 400;
+    color: #6b7280;
+}
+
+.ns-card-uri {
+    font-size: 12px;
+    color: #6b7280;
+    word-break: break-all;
+}
+
 /* === Enumeration documentation === */
 .enum-doc {
     color: #666;

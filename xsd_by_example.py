@@ -226,7 +226,8 @@ def main():
     main_doc = parse_xml(input_path)
 
     log("Zpracovávám importy…")
-    ImportResolver(main_doc).handle_imports(main_doc, input_path)
+    resolver = ImportResolver(main_doc)
+    resolver.handle_imports(main_doc, input_path)
 
     log("Inicializuji Jinja2 šablonu…")
     template_env = jinja2.Environment(
@@ -254,6 +255,8 @@ def main():
         main_xml_path=input_path,
         doc=main_doc,
         usages_by_name=defaultdict(set),
+        ns_to_prefix=resolver.ns_to_prefix,
+        root_target_ns=resolver.root_target_ns,
     )
 
     log("Ukládám výstup…")
