@@ -267,7 +267,7 @@
 
     {% macro simple_type_contents(st_el, on) %}
         {% call el_div("simple-type", st_el) %}
-            {{ elem_origin("simple type", st_el) }}
+            {{ elem_origin("simple type", st_el, kind="type") }}
             {{ child_annotations(st_el) }}
 
             {% for union_el in st_el|xpath("xsd:union") %}
