@@ -230,7 +230,10 @@ def main():
 
     log("Inicializuji Jinja2 šablonu…")
     template_env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(Path(__file__).parent), autoescape=True
+        loader=jinja2.FileSystemLoader(Path(__file__).parent),
+        autoescape=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
     )
     template_env.add_extension("jinja2.ext.do")
     template_env.filters.update(
