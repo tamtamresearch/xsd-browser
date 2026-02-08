@@ -296,7 +296,16 @@
 
                     <ul>
                         {% for el in rest_el %}
-                            <li><code>{{ el|prettyprint_xml }}</code></li>
+                            {% if el.tag == "{http://www.w3.org/2001/XMLSchema}enumeration" %}
+                                <li>
+                                    <code>{{ el.attrib.value }}</code>
+                                    {% for doc_el in el|xpath("xsd:annotation/xsd:documentation") %}
+                                        <span class="enum-doc"> — {{ doc_el|xpath("string()")|trim }}</span>
+                                    {% endfor %}
+                                </li>
+                            {% else %}
+                                <li><code>{{ el|prettyprint_xml }}</code></li>
+                            {% endif %}
                         {% endfor %}
                     </ul>
                 {% endcall %}

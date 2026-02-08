@@ -338,3 +338,9 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
 .usages a {
     font-size: 12px;
 }
+
+/* === Enumeration documentation === */
+.enum-doc {
+    color: #666;
+    font-style: italic;
+}
