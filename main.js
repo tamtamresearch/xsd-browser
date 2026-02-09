@@ -194,30 +194,6 @@ function onCollapsibleElementRefToggle(detailEl) {
 }
 
 /**
- * Form submit handler for element picker.
- * Navigates to the selected element by updating URL hash.
- * @returns {false} Prevents default form submission
- */
-function onElementFormSubmit() {
-    const element = document.getElementById("root-element-name").value;
-    window.location.hash = `#element-${element}`;
-    return false;
-}
-
-/**
- * Auto-navigates when user selects an element from the datalist dropdown.
- * Checks if input value exactly matches a datalist option; if so, navigates.
- */
-function onElementInputChange() {
-    const input = document.getElementById("root-element-name");
-    const datalist = document.getElementById("element-list");
-    const options = [...datalist.options].map(o => o.value);
-    if (options.includes(input.value)) {
-        window.location.hash = `#element-${input.value}`;
-    }
-}
-
-/**
  * Replaces the main content area with new content.
  * @param {DocumentFragment|HTMLElement} el - Content to display
  */
@@ -238,8 +214,6 @@ function showElement(element) {
         alert(`No such element: ${element}`);
         return;
     }
-
-    document.getElementById("root-element-name").value = element;
 
     const template = document.getElementById("root-element-template");
     const contentEl = template.content.cloneNode(true);

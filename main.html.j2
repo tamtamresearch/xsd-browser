@@ -634,25 +634,6 @@
 
     <header>
         <h1><a href="#" onclick="history.pushState(null, '', location.pathname); showFromHash(); return false;">{{ main_xml_path.name }}</a></h1>
-
-        <form onsubmit="onElementFormSubmit()">
-            <label for=root-element-name
-                   title="Global elements that can serve as XML document roots. Local elements nested in types are not listed."
-                   >Root element:</label>
-            <input type=text
-                   list=element-list
-                   id=root-element-name
-                   placeholder="Element name"
-                   oninput="onElementInputChange()">
-            <datalist id=element-list>
-                {% for elem_el in doc|xpath("xsd:element[@name]") %}
-                    <option>{{ elem_el.attrib.name }}</option>
-                {% endfor %}
-            </datalist>
-            <button>
-                Show element
-            </button>
-        </form>
     </header>
 
     <main>
