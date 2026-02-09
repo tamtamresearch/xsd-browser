@@ -80,6 +80,10 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Fix: Hide empty "New attributes:" and "Allowed attributes:" headings
+
+Bare "New attributes:" and "Allowed attributes:" headings were shown even when `child_attributes()` produced no content. Fixed by capturing the macro output and only rendering the heading when the result is non-empty, following the same pattern used for element headings.
+
 ### Make remaining builtin type references clickable links
 
 Builtin XSD type names (e.g., `xsd:string`) shown in "Restriction of:", "List of:", union memberTypes, and element type fallback contexts are now rendered as clickable links to the W3C XML Schema spec. Previously only the `type_link` macro produced links; the `type_contents_ref` macro rendered them as plain text. Now `type_contents_ref` also uses `type_link` for its builtin type branch.

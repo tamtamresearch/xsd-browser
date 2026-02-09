@@ -163,8 +163,11 @@
                         {{ type_attrs_ref(ext_el.attrib.base, on) }}
                     </div>
 
+                    {% set new_attrs %}{{ child_attributes(ext_el, on) }}{% endset %}
+                    {% if new_attrs|trim %}
                     <div class=note>New attributes:</div>
-                    {{ child_attributes(ext_el, on) }}
+                    {{ new_attrs }}
+                    {% endif %}
                 {% endcall %}
             {% endfor %}
 
@@ -175,8 +178,11 @@
                         {{ type_attrs_ref(rest_el.attrib.base, on) }}
                     </div>
 
+                    {% set allowed_attrs %}{{ child_attributes(rest_el, on) }}{% endset %}
+                    {% if allowed_attrs|trim %}
                     <div class=note>Allowed attributes:</div>
-                    {{ child_attributes(rest_el, on) }}
+                    {{ allowed_attrs }}
+                    {% endif %}
                 {% endcall %}
             {% endfor %}
         </span>
