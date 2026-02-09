@@ -80,6 +80,19 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Show root namespace prefix when explicitly declared in schema
+
+When a root XSD schema declares an explicit prefix for its own `targetNamespace` (e.g., `xmlns:d2="http://datex2.eu/schema/3/d2Payload"` matching `targetNamespace="http://datex2.eu/schema/3/d2Payload"`), root elements now display with that prefix (e.g., `d2:payload` instead of `payload`).
+
+Previously, the tool always rendered root namespace elements unprefixed, which was correct for schemas that use the default namespace (no prefix) for their `targetNamespace` — such as the TPEG schemas — but incorrect for schemas like DATEX II that declare an explicit prefix.
+
+**Changes**:
+- `ImportResolver` now detects whether the root schema declares an explicit prefix for its `targetNamespace` (`root_prefix`)
+- When `root_prefix` is set, all root namespace elements, types, groups, and references are prefixed accordingly
+- Cross-namespace references pointing back to the root namespace use the root prefix instead of being stripped
+- The landing page no longer shows a duplicate "(default)" card when the root namespace already appears with its declared prefix in the namespace list
+- Schemas using the default namespace (no prefix) for `targetNamespace` are unaffected
+
 ### Landing page with categorized index of all definitions
 
 When no hash is present (or the hash doesn't match any known definition), a landing page is now displayed instead of a blank content area. It shows all schema definitions as clickable links grouped into sections: Elements, Complex Types, Simple Types, and Groups. Each section uses a responsive multi-column layout. This is especially useful for schemas without root elements, where there was previously no obvious starting point for navigation.

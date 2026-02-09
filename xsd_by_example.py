@@ -89,9 +89,18 @@ class ImportResolver:
         # Global namespace → prefix registry
         self.ns_to_prefix = {}
         self.root_target_ns = self.main_schema_el.attrib.get("targetNamespace")
+        # Detect if root schema declares an explicit prefix for its own targetNamespace
+        self.root_prefix = ""
+        if self.root_target_ns:
+            for pfx, ns_uri in main_doc.getroot().nsmap.items():
+                if pfx is not None and ns_uri == self.root_target_ns:
+                    self.root_prefix = pfx
+                    break
         # Seed from root document's nsmap
         for pfx, ns_uri in main_doc.getroot().nsmap.items():
             if pfx is not None and ns_uri != XSD and ns_uri not in self.ns_to_prefix:
+                if ns_uri == self.root_target_ns and not self.root_prefix:
+                    continue
                 self.ns_to_prefix[ns_uri] = pfx
 
     def _collect_prefixes_from_schema(self, schema_el):
@@ -142,6 +151,9 @@ class ImportResolver:
                     log(f"Odvozuji prefix '{prefix}' pro namespace {ns}")
                 add_prefix = prefix + ":"
                 log(f"Používám prefix '{add_prefix}' pro namespace {ns}")
+            elif ns == self.root_target_ns and self.root_prefix:
+                add_prefix = self.root_prefix + ":"
+                log(f"Namespace {ns} je root s prefixem '{self.root_prefix}'")
             elif ns == self.root_target_ns:
                 log(f"Namespace {ns} je root – neprefixuji")
 
@@ -189,7 +201,10 @@ class ImportResolver:
                     if not ref_ns or ref_ns == XSD:
                         continue
                     if ref_ns == self.root_target_ns:
-                        el.attrib[attr] = local  # root namespace → strip prefix
+                        if self.root_prefix:
+                            el.attrib[attr] = self.root_prefix + ":" + local
+                        else:
+                            el.attrib[attr] = local  # root namespace → strip prefix
                     else:
                         registry_prefix = self.ns_to_prefix.get(ref_ns)
                         if registry_prefix:
@@ -205,6 +220,29 @@ class ImportResolver:
                 if el.tag == f"{{{XSD}}}annotation":
                     continue
                 self.main_schema_el.append(el)
+
+
+def _prefix_root_elements(elements, add_prefix):
+    """Prefix the root document's own definitions with the root namespace prefix."""
+    for el in elements:
+        tag = lxml.etree.QName(el.tag).localname if isinstance(el.tag, str) else None
+        if tag in ("element", "group", "attributeGroup", "complexType", "simpleType"):
+            name = el.attrib.get("name", "")
+            if name and ":" not in name:
+                el.attrib["name"] = add_prefix + name
+
+    # Prefix ref/type/base/substitutionGroup on all descendants of original elements
+    for root_el in elements:
+        for attr in ("ref", "substitutionGroup"):
+            for el in root_el.iter():
+                val = el.attrib.get(attr)
+                if val and ":" not in val:
+                    el.attrib[attr] = add_prefix + val
+        for attr in ("type", "base"):
+            for el in root_el.iter():
+                val = el.attrib.get(attr)
+                if val and ":" not in val and not val.startswith("xsd:"):
+                    el.attrib[attr] = add_prefix + val
 
 
 def main():
@@ -227,7 +265,13 @@ def main():
 
     log("Zpracovávám importy…")
     resolver = ImportResolver(main_doc)
+    # Snapshot original root children before imports add more
+    original_root_children = list(resolver.main_schema_el)
     resolver.handle_imports(main_doc, input_path)
+
+    # If root schema declares an explicit prefix, prefix its own definitions
+    if resolver.root_prefix:
+        _prefix_root_elements(original_root_children, resolver.root_prefix + ":")
 
     log("Inicializuji Jinja2 šablonu…")
     template_env = jinja2.Environment(

@@ -614,7 +614,7 @@
             <section class=landing-prefixes>
                 <h2>Namespaces</h2>
                 <div class=ns-grid>
-                    {% if root_target_ns %}
+                    {% if root_target_ns and root_target_ns not in ns_to_prefix %}
                     <div class=ns-card>
                         <div class="ns-card-prefix default"><em>(default)</em></div>
                         <div class=ns-card-uri>{{ root_target_ns }}</div>
