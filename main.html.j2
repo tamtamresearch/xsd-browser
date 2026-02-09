@@ -376,7 +376,7 @@
             <xbe-ref type=type-contents ref="{{ type }}"></xbe-ref>
         {% else %}
             <div class=builtin-type>
-                <div class=origin>Builtin type {{ type }}</div>
+                <div class=origin>Builtin type {{ type_link(type, on) }}</div>
             </div>
         {% endif %}
     {% endmacro %}

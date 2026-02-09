@@ -80,6 +80,10 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Make remaining builtin type references clickable links
+
+Builtin XSD type names (e.g., `xsd:string`) shown in "Restriction of:", "List of:", union memberTypes, and element type fallback contexts are now rendered as clickable links to the W3C XML Schema spec. Previously only the `type_link` macro produced links; the `type_contents_ref` macro rendered them as plain text. Now `type_contents_ref` also uses `type_link` for its builtin type branch.
+
 ### Normalize XSD built-in type prefixes and link to W3C spec
 
 XSD built-in types (e.g., `xs:string`, `xs:integer`) are now normalized to the canonical `xsd:` prefix regardless of which prefix the source schemas use (`xs:`, `xsd:`, etc.). Previously, schemas using `xs:` (the common case) produced broken internal links like `#type-xs:string` because the template only recognized the `xsd:` prefix.
