@@ -363,6 +363,21 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
     grid-column: 1 / -1;
 }
 
+.landing-prefixes summary {
+    cursor: pointer;
+    list-style: revert;
+}
+
+.landing-prefixes summary h2 {
+    display: inline;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.landing-prefixes .ns-grid {
+    margin-top: 12px;
+}
+
 .ns-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
