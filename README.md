@@ -80,6 +80,17 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Normalize XSD built-in type prefixes and link to W3C spec
+
+XSD built-in types (e.g., `xs:string`, `xs:integer`) are now normalized to the canonical `xsd:` prefix regardless of which prefix the source schemas use (`xs:`, `xsd:`, etc.). Previously, schemas using `xs:` (the common case) produced broken internal links like `#type-xs:string` because the template only recognized the `xsd:` prefix.
+
+Additionally, built-in XSD types are now rendered as clickable links that open the relevant section of the [W3C XML Schema Part 2](https://www.w3.org/TR/xmlschema-2/) specification (e.g., `xsd:string` links to `#string`).
+
+**Changes**:
+- `xsd_by_example.py`: Cross-namespace remapping in imported schemas now rewrites XSD-namespace references to `xsd:` instead of skipping them
+- `xsd_by_example.py`: New `_normalize_xsd_prefixes()` function normalizes `xs:` → `xsd:` in `type`/`base` attributes of the root schema after import resolution
+- `main.html.j2`: The `type_link` macro's `xsd:` branch now renders an `<a>` tag linking to the W3C spec instead of a plain `<span>`
+
 ### Make inherited type names clickable links
 
 "Inherited attributes from X:" and "Inherited from X:" labels in complex type views now render the base type name as a clickable link navigating to the type's definition, using the existing `type_link` macro.

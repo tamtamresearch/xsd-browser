@@ -198,7 +198,10 @@ class ImportResolver:
                         continue
                     local_prefix, local = val.split(":", 1)
                     ref_ns = import_nsmap.get(local_prefix)
-                    if not ref_ns or ref_ns == XSD:
+                    if ref_ns == XSD:
+                        el.attrib[attr] = "xsd:" + local
+                        continue
+                    if not ref_ns:
                         continue
                     if ref_ns == self.root_target_ns:
                         if self.root_prefix:
@@ -220,6 +223,18 @@ class ImportResolver:
                 if el.tag == f"{{{XSD}}}annotation":
                     continue
                 self.main_schema_el.append(el)
+
+
+def _normalize_xsd_prefixes(schema_el, xsd_prefixes):
+    """Rewrite any XSD-namespace prefix (e.g. xs:) to the canonical xsd: form."""
+    for attr in ("type", "base"):
+        for el in schema_el.iter():
+            val = el.attrib.get(attr)
+            if not val or ":" not in val:
+                continue
+            pfx, local = val.split(":", 1)
+            if pfx in xsd_prefixes and pfx != "xsd":
+                el.attrib[attr] = "xsd:" + local
 
 
 def _prefix_root_elements(elements, add_prefix):
@@ -272,6 +287,14 @@ def main():
     # If root schema declares an explicit prefix, prefix its own definitions
     if resolver.root_prefix:
         _prefix_root_elements(original_root_children, resolver.root_prefix + ":")
+
+    # Normalize all XSD-namespace prefixes (e.g. xs:string) to canonical xsd: form
+    xsd_prefixes = {
+        pfx for pfx, ns_uri in main_doc.getroot().nsmap.items()
+        if pfx is not None and ns_uri == XSD
+    }
+    if xsd_prefixes - {"xsd"}:
+        _normalize_xsd_prefixes(resolver.main_schema_el, xsd_prefixes)
 
     log("Inicializuji Jinja2 šablonu…")
     template_env = jinja2.Environment(

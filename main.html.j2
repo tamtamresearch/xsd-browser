@@ -41,7 +41,10 @@
         {%- if not type.startswith("xsd:") -%}
             <a class="type-link" href="#type-{{ type }}">{{ type }}</a>
         {%- else -%}
-            <span>{{ type }}</span>
+            <a class="type-link xsd-builtin"
+               href="https://www.w3.org/TR/xmlschema-2/#{{ type[4:] }}"
+               target="_blank"
+               title="W3C XML Schema built-in type">{{ type }}</a>
         {%- endif -%}
     {%- endmacro %}
 
