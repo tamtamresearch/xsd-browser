@@ -36,17 +36,14 @@
         </a>
     {% endmacro %}
 
-    {% macro type_link(type, on) %}
+    {% macro type_link(type, on) -%}
         {{ record_usage(on, ("type", type)) }}
-        {% if not type.startswith("xsd:") %}
-            <a class="type-link"
-               href="#type-{{ type }}">
-                {{ type }}
-            </a>
-        {% else %}
+        {%- if not type.startswith("xsd:") -%}
+            <a class="type-link" href="#type-{{ type }}">{{ type }}</a>
+        {%- else -%}
             <span>{{ type }}</span>
-        {% endif %}
-    {% endmacro %}
+        {%- endif -%}
+    {%- endmacro %}
 
     {% macro group_link(name, on) %}
         {{ record_usage(on, ("group", name)) }}
@@ -158,7 +155,7 @@
 
             {% for ext_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
                 {% call el_div("extension-attrs", ext_el) %}
-                    <div class=note>Inherited attributes from {{ ext_el.attrib.base }}:</div>
+                    <div class=note>Inherited attributes from {{ type_link(ext_el.attrib.base, on) }}:</div>
                     <div class="inherited">
                         {{ type_attrs_ref(ext_el.attrib.base, on) }}
                     </div>
@@ -170,7 +167,7 @@
 
             {% for rest_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
                 {% call el_div("restriction-attrs", rest_el) %}
-                    <div class=note>Inherited attributes from {{ rest_el.attrib.base }}:</div>
+                    <div class=note>Inherited attributes from {{ type_link(rest_el.attrib.base, on) }}:</div>
                     <div class="inherited">
                         {{ type_attrs_ref(rest_el.attrib.base, on) }}
                     </div>
@@ -223,7 +220,7 @@
                     {% set inherited_content %}{{ inherited_elements(ext_el.attrib.base, on) }}{% endset %}
                     {% if inherited_content|trim %}
                         <div class="inherited-section">
-                            <div class=note>Inherited from {{ ext_el.attrib.base }}:</div>
+                            <div class=note>Inherited from {{ type_link(ext_el.attrib.base, on) }}:</div>
                             <div class="extension-content inherited">
                                 {{ inherited_content }}
                             </div>
@@ -246,7 +243,7 @@
                     {% set inherited_content %}{{ inherited_elements(rest_el.attrib.base, on) }}{% endset %}
                     {% if inherited_content|trim %}
                         <div class="inherited-section">
-                            <div class=note>Inherited from {{ rest_el.attrib.base }}:</div>
+                            <div class=note>Inherited from {{ type_link(rest_el.attrib.base, on) }}:</div>
                             <div class="restriction-content inherited">
                                 {{ inherited_content }}
                             </div>

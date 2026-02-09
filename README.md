@@ -80,6 +80,12 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 
 ## Changelog
 
+### Make inherited type names clickable links
+
+"Inherited attributes from X:" and "Inherited from X:" labels in complex type views now render the base type name as a clickable link navigating to the type's definition, using the existing `type_link` macro.
+
+Additionally, whitespace control tags (`-` trimming) were added to the `type_link` macro in `main.html.j2` to prevent Jinja2 from emitting extra whitespace/newlines around the `<a>` element. Without this, the colon after the link (e.g., "Inherited from `Type` :") would appear with a spurious space due to the newline between the closing `</a>` tag and the `:` character in the surrounding template text.
+
 ### Show root namespace prefix when explicitly declared in schema
 
 When a root XSD schema declares an explicit prefix for its own `targetNamespace` (e.g., `xmlns:d2="http://datex2.eu/schema/3/d2Payload"` matching `targetNamespace="http://datex2.eu/schema/3/d2Payload"`), root elements now display with that prefix (e.g., `d2:payload` instead of `payload`).
