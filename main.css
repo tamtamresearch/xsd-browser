@@ -268,9 +268,9 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
 }
 .collapsible-element-ref > summary:first-of-type > .arrow {
     display: inline-flex;
-    align-items: center;
     justify-content: center;
-    width: 18px;
+    width: 14px;
+    transform: translateY(-3px);
 }
 .collapsible-element-ref > summary:first-of-type > .arrow::before {
     content: "\25B8";
