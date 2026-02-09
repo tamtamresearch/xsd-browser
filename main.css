@@ -71,7 +71,7 @@ xbe-ref {
     margin-bottom: 12px;
 }
 
-.element-head :last-child {
+.element-head > :last-child {
     /* Align closing ">" */
     align-self: end;
 }
