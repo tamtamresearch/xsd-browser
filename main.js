@@ -157,7 +157,7 @@ class CollapsipleElementRefElement extends HTMLElement {
         baseContentEl
             .querySelectorAll(".simple, .element-end")
             .forEach(el =>
-                el.innerText = el.innerText.replaceAll("ELEMENT", element));
+                el.textContent = el.textContent.replaceAll("ELEMENT", element));
         baseContentEl.querySelector("xbe-ref").setAttribute("ref", element);
         const afterHeadSlot =
             baseContentEl.querySelector("slot[name=after-head]");
