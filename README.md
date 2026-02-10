@@ -31,14 +31,16 @@ uv sync
 ## Usage
 
 ```bash
-xsd-by-example input.xsd output.html
+xsd-by-example input.xsd [output.html]
 ```
 
 Or with uv:
 
 ```bash
-uv run xsd-by-example input.xsd output.html
+uv run xsd-by-example input.xsd [output.html]
 ```
+
+If `output.html` is omitted (or set to `-`), the result is written to stdout.
 
 ## Optional: HTML Minification
 

@@ -267,16 +267,23 @@ def main():
 
     parser = argparse.ArgumentParser(description="Generate HTML documentation from XSD")
     parser.add_argument("input", help="Input XSD file")
-    parser.add_argument("output", help="Output HTML file")
+    parser.add_argument(
+        "output",
+        nargs="?",
+        default=None,
+        help="Output HTML file. If omitted or set to '-', the result is written to stdout.",
+    )
     parser.add_argument("--minify", action="store_true", help="Minify HTML output")
     args = parser.parse_args()
 
     input_path = Path(args.input).absolute()
-    output_path = Path(args.output).absolute()
 
     log(f"Starting documentation generation")
     log(f"Input XSD: {input_path}")
-    log(f"Output HTML: {output_path}")
+    if args.output is not None and args.output != "-":
+        log(f"Output HTML: {Path(args.output).absolute()}")
+    else:
+        log(f"Output HTML: stdout")
 
     if not input_path.exists():
         print(f"File {input_path} does not exist", file=sys.stderr)
@@ -346,8 +353,13 @@ def main():
         log("Minifying HTML...")
         output = minify_html.minify(output, minify_js=True, minify_css=True)
 
-    log("Writing output...")
-    output_path.write_text(output, encoding="utf-8")
+    if args.output is None or args.output == "-":
+        log("Writing to stdout...")
+        sys.stdout.write(output)
+    else:
+        output_path = Path(args.output).absolute()
+        log(f"Writing output to {output_path}...")
+        output_path.write_text(output, encoding="utf-8")
 
     log("Done.")
 
