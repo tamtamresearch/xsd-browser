@@ -576,64 +576,95 @@
     {% endmacro %}
 
     {% macro complex_type_attrs(ct_el, on) %}
-        <span class=complex-type-attrs
-             {{ ct_el|elem_name_attrs|xmlattr }}>
+        <span class=complex-type-attrs {{ ct_el|elem_name_attrs|xmlattr }}>
             {{ complex_type_origin(ct_el) }}
             {{ child_attributes(ct_el, on) }}
-            {% for ext_el in ct_el|xpath(
-                "(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
-                {% call el_div("extension-attrs", ext_el) %}
-                    <div class=origin>
-                        Extension of {{ ext_el.attrib.base }}:
-                    </div>
-                    {{ type_attrs_ref(ext_el.attrib.base, on) }}
 
-                    <span class=note>Extended by:</span>
+            {% for ext_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                {% call el_div("extension-attrs", ext_el) %}
+                    <div class=note>Inherited attributes from {{ ext_el.attrib.base }}:</div>
+                    <div class="inherited">
+                        {{ type_attrs_ref(ext_el.attrib.base, on) }}
+                    </div>
+
+                    <div class=note>New attributes:</div>
                     {{ child_attributes(ext_el, on) }}
                 {% endcall %}
             {% endfor %}
-            {% for rest_el in ct_el|xpath(
-                "(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
-                {% call el_div("restriction-attrs", rest_el) %}
-                    <div class=origin>
-                        Restriction of {{ rest_el.attrib.base }}:
-                    </div>
-                    {{ type_attrs_ref(rest_el.attrib.base, on) }}
 
-                    <span class=note>Restricted by:</span>
+            {% for rest_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
+                {% call el_div("restriction-attrs", rest_el) %}
+                    <div class=note>Inherited attributes from {{ rest_el.attrib.base }}:</div>
+                    <div class="inherited">
+                        {{ type_attrs_ref(rest_el.attrib.base, on) }}
+                    </div>
+
+                    <div class=note>Allowed attributes:</div>
                     {{ child_attributes(rest_el, on) }}
                 {% endcall %}
             {% endfor %}
         </span>
     {% endmacro %}
+    
+    {% macro inherited_elements(base, on) %}
+        {% set base_name = base.split(":")[-1] %}
+        {% for base_ct in doc|xpath('//xsd:complexType[@name="{}"]'.format(base_name)) %}
+            {{ child_elements(base_ct, on) }}
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro extended_by(type_name) %}
+        {% set local = type_name.split(":")[-1] %}
+        {% set derived = doc|xpath(
+            '//xsd:complexType[(xsd:simpleContent|xsd:complexContent)/xsd:extension[' ~
+            'local-name(@base)="{}" or @base="{}"]]'.format(local, type_name)
+        ) %}
+        {% set derived = derived|rejectattr("attrib.name", "equalto", type_name)|list %}
+
+        {% if derived %}
+            <div class="usages-box">
+                <summary><strong>Extended by:</strong></summary>
+                <ul class="usages">
+                    {% for ct in derived %}
+                        <li><a href="#type-{{ ct.attrib.name }}">{{ ct.attrib.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    {% endmacro %}
 
     {% macro complex_type_contents(ct_el, on) %}
         {% call el_div("complex-type-contents", ct_el) %}
             {{ complex_type_origin(ct_el) }}
+            {{ extended_by(ct_el.attrib.name) }}
             {{ child_annotations(ct_el) }}
 
+            {# 1) Vlastní elementy typu #}
             {{ child_elements(ct_el, on) }}
-            {% for ext_el in ct_el|xpath(
-                "(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+
+            {# 2) Zděděné elementy #}
+            {% for ext_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
                 {% call el_div("extension", ext_el) %}
-                    <div class=note>Extension of:</div>
-                    <div class=extension-content>
-                        {{ type_contents_ref(ext_el.attrib.base, on) }}
+                    <div class=note>Inherited from {{ ext_el.attrib.base }}:</div>
+                    <div class="extension-content inherited">
+                        {{ inherited_elements(ext_el.attrib.base, on) }}
                     </div>
-                    <div class=note>Extended by:</div>
+
+                    <div class=note>New elements:</div>
                     {{ child_elements(ext_el, on) }}
                 {% endcall %}
             {% endfor %}
-            {% for rest_el in ct_el|xpath(
-                "xsd:complexContent/xsd:restriction") %}
+
+            {# 3) Restriction #}
+            {% for rest_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
                 {% call el_div("restriction", rest_el) %}
-                    <div class=note>
-                        Restriction of {{ type_link(rest_el.attrib.base) }} to:
+                    <div class=note>Inherited from {{ rest_el.attrib.base }}:</div>
+                    <div class="restriction-content inherited">
+                        {{ inherited_elements(rest_el.attrib.base, on) }}
                     </div>
-                    {# It seems restrictions need to re-declare all allowed
-                    elements, but attributes are preserved:
-                    https://stackoverflow.com/a/24292994 #}
-                    {{ child_elements(rest_el) }}
+
+                    <div class=note>Allowed elements:</div>
+                    {{ child_elements(rest_el, on) }}
                 {% endcall %}
             {% endfor %}
         {% endcall %}

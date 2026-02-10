@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # This file is licenced under the GNU AGPLv3 or later
 # (c) 2023 David Koňařík
+
 import sys
 from copy import deepcopy
 from pathlib import Path
@@ -10,14 +11,18 @@ import lxml.etree
 import lxml.objectify
 import jinja2
 
+def log(msg):
+    print(f"[INFO] {msg}", file=sys.stderr)
+
 def parse_xml(path):
+    log(f"Načítám XML: {path}")
     return lxml.etree.parse(path)
 
 XSD = "http://www.w3.org/2001/XMLSchema"
+
 def xpath(elem, query):
-    return elem.xpath(query, namespaces={
-        "xsd": XSD,
-    })
+    return elem.xpath(query, namespaces={"xsd": XSD})
+
 def xpath_one(elem, query):
     results = xpath(elem, query)
     return None if len(results) == 0 else results[0]
@@ -29,7 +34,7 @@ def prettyprint_xml(elem):
             e.tag = lxml.etree.QName(e.tag).localname
     if not isinstance(elem, lxml.etree._Comment):
         lxml.etree.cleanup_namespaces(elem)
-    return lxml.etree.tostring(elem, pretty_print=True, ).decode()
+    return lxml.etree.tostring(elem, pretty_print=True).decode()
 
 def elem_type(elem):
     return {
@@ -73,81 +78,120 @@ class ImportResolver:
 
     def handle_imports(self, doc, path):
         for include_el in xpath(doc, "xsd:include | xsd:import"):
-            include_path = (path.parent / include_el.attrib["schemaLocation"]) \
-                .resolve()
-            if include_path in self.imported: continue
+            include_path = (path.parent / include_el.attrib["schemaLocation"]).resolve()
+            if include_path in self.imported:
+                continue
+
             self.imported.add(include_path)
-            print("Importing", include_path, file=sys.stderr)
+            log(f"Importuji {include_path}")
 
             include_doc = lxml.etree.parse(include_path)
+            include_schema = xpath_one(include_doc, "//xsd:schema")
 
-            nsmap_additions = {}
-            for prefix, namespace in include_doc.getroot().nsmap.items():
-                if prefix is None: continue
-                nsmap = self.main_doc.getroot().nsmap
-                if prefix in nsmap and nsmap[prefix] != namespace:
-                    print(f"Can't add namespace prefix {prefix} for {namespace}, "
-                          f"since it is already used for {self.main_doc.getroot().nsmap[prefix]}",
-                          file=sys.stderr)
-                    continue
-                nsmap_additions[prefix] = namespace
-            if nsmap_additions != {}:
-                new_nsmap = self.main_doc.getroot().nsmap | nsmap_additions
-                lxml.etree.cleanup_namespaces(
-                    self.main_doc,
-                    top_nsmap=new_nsmap,
-                    keep_ns_prefixes=[k for k in new_nsmap.keys() if k is not None])
+            # zjistíme namespace
+            ns = include_el.attrib.get("namespace") or include_schema.attrib.get("targetNamespace")
+            add_prefix = ""
 
+            if ns:
+                # mapujeme namespace → prefix podle hlavního dokumentu
+                ns_to_prefix = {n: p for p, n in self.main_doc.getroot().nsmap.items()}
+
+                if ns in ns_to_prefix:
+                    prefix = ns_to_prefix[ns]
+
+                    if prefix is None:
+                        # default namespace → nepřepisujeme
+                        log(f"Namespace {ns} je defaultní (bez prefixu) – nepřepisuji @name/@ref")
+                        add_prefix = ""
+                    else:
+                        # máme prefix → použijeme ho
+                        add_prefix = prefix + ":"
+                        log(f"Používám prefix '{prefix}:' pro namespace {ns}")
+
+                else:
+                    # namespace není v hlavním XSD → ignorujeme
+                    log(f"Namespace {ns} není v hlavním XSD – nepřepisuji @name/@ref")
+                    add_prefix = ""
+            else:
+                add_prefix = ""
+
+            # rekurzivně zpracujeme importy uvnitř importovaného souboru
             self.handle_imports(include_doc, include_path)
 
-            add_prefix = ""
-            if "namespace" in include_el.attrib:
-                ns_to_prefix = {n: p for p, n in self.main_doc.getroot().nsmap.items()}
-                add_prefix = ns_to_prefix[include_el.attrib["namespace"]] + ":"
+            # pokud máme prefix, přepíšeme name/ref bez prefixu
+            if add_prefix:
+                # 1) Prefixujeme jen elementy, groupy a attributeGroup – ne typy
+                for el in xpath(include_schema,
+                                "xsd:element[@name] | xsd:group[@name] | xsd:attributeGroup[@name]"):
+                    if ":" not in el.attrib["name"]:
+                        el.attrib["name"] = add_prefix + el.attrib["name"]
 
-            for el in xpath(include_doc, "//*[@name]"):
-                if ":" not in el.attrib["name"]:
-                    el.attrib["name"] = add_prefix + el.attrib["name"]
-            for el in xpath(include_doc, "//*[@ref]"):
-                if ":" not in el.attrib["ref"]:
-                    el.attrib["ref"] = add_prefix + el.attrib["ref"]
+                # 2) Prefixujeme ref (tam prefix dává smysl vždy)
+                for el in xpath(include_schema, "//*[@ref]"):
+                    if ":" not in el.attrib["ref"]:
+                        el.attrib["ref"] = add_prefix + el.attrib["ref"]
 
-            for el in xpath_one(include_doc, "//xsd:schema"):
-                if el.tag == f"{{{XSD}}}annotation": continue
+                # 3) Prefixujeme typy v @type, pokud nejsou builtin
+                for el in xpath(include_schema, "//*[@type]"):
+                    t = el.attrib["type"]
+                    if ":" not in t and not t.startswith("xsd:"):
+                        el.attrib["type"] = add_prefix + t
+            
+            # přidáme obsah importovaného schema do hlavního
+            for el in include_schema:
+                if el.tag == f"{{{XSD}}}annotation":
+                    continue
                 self.main_schema_el.append(el)
 
+def main():
+    if len(sys.argv) != 3:
+        print(f"Usage: {sys.argv[0]} <input.xsd> <output.html>", file=sys.stderr)
+        sys.exit(1)
 
-if len(sys.argv) != 2:
-    print(f"Usage: {sys.argv[0]} <main.xsd>", file=sys.stderr)
-    sys.exit(1)
+    input_path = Path(sys.argv[1]).absolute()
+    output_path = Path(sys.argv[2]).absolute()
 
-main_doc_path = Path(sys.argv[1]).absolute()
-main_doc = parse_xml(main_doc_path)
+    log(f"Startuji generování dokumentace")
+    log(f"Vstupní XSD: {input_path}")
+    log(f"Výstupní HTML: {output_path}")
 
-ImportResolver(main_doc).handle_imports(main_doc, main_doc_path)
+    if not input_path.exists():
+        print(f"Soubor {input_path} neexistuje", file=sys.stderr)
+        sys.exit(1)
 
-# TODO: Automatically add xsd prefix and remap xsd name/ref fields
-assert main_doc.getroot().nsmap.get("xsd") == XSD, \
-    "Expected xsd prefix not found"
+    main_doc = parse_xml(input_path)
 
-template_env = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(Path(__file__).parent),
-    autoescape=True)
-template_env.add_extension("jinja2.ext.do")
-template_env.filters.update({
-    "xpath": xpath,
-    "xpath_one": xpath_one,
-    "prettyprint_xml": prettyprint_xml,
-    "elem_type": elem_type,
-    "elem_path_attrs": elem_path_attrs,
-    "elem_name_attrs": elem_name_attrs,
-})
+    log("Zpracovávám importy…")
+    ImportResolver(main_doc).handle_imports(main_doc, input_path)
 
-template = template_env.get_template("main.html.j2")
-print(template.render(
-    main_xml_path=main_doc_path,
-    doc=main_doc,
-    # Maps tuple of (type, name) to (type, name) tuples where the first
-    # is referenced by the second
-    usages_by_name=defaultdict(set),
-))
+    log("Inicializuji Jinja2 šablonu…")
+    template_env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(Path(__file__).parent),
+        autoescape=True
+    )
+    template_env.add_extension("jinja2.ext.do")
+    template_env.filters.update({
+        "xpath": xpath,
+        "xpath_one": xpath_one,
+        "prettyprint_xml": prettyprint_xml,
+        "elem_type": elem_type,
+        "elem_path_attrs": elem_path_attrs,
+        "elem_name_attrs": elem_name_attrs,
+    })
+
+    template = template_env.get_template("main.html.j2")
+
+    log("Renderuji HTML…")
+    output = template.render(
+        main_xml_path=input_path,
+        doc=main_doc,
+        usages_by_name=defaultdict(set),
+    )
+
+    log("Ukládám výstup…")
+    output_path.write_text(output, encoding="utf-8")
+
+    log("Hotovo.")
+
+if __name__ == "__main__":
+    main()
