@@ -2,7 +2,6 @@
 # This file is licenced under the GNU AGPLv3 or later
 # (c) 2023 David Koňařík
 
-import re
 import sys
 from collections import defaultdict
 from copy import deepcopy
@@ -327,7 +326,9 @@ def main():
         root_target_ns=resolver.root_target_ns,
     )
 
-    output = re.sub(r'\n\s*\n', '\n\n', output)
+    import minify_html
+
+    output = minify_html.minify(output, minify_js=True, minify_css=True)
 
     log("Ukládám výstup…")
     output_path.write_text(output, encoding="utf-8")
