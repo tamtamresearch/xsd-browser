@@ -13,8 +13,10 @@ authors = [
 dependencies = [
   "lxml",
   "jinja2",
-  "minify-html",
 ]
+
+[project.optional-dependencies]
+minify = ["minify-html"]
 
 [project.scripts]
 xsd-by-example = "xsd_by_example:main"

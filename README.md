@@ -54,6 +54,18 @@ V kořenovém adresáři projektu:
 
 uv sync
 
+### Volitelné závislosti
+
+Projekt má volitelnou závislost na `minify-html`, která umožňuje minifikaci výstupního HTML/JS/CSS. Instalace:
+
+uv sync --extra minify
+
+Poté lze při generování použít přepínač `--minify`:
+
+uv run xsd-by-example input.xsd output.html --minify
+
+Bez tohoto přepínače je výstup neminifikovaný (prázdné řádky jsou ale stále sloučeny).
+
 ### Spuštění nástroje
 
 uv run xsd_by_example.py input.xsd output.html
@@ -79,6 +91,10 @@ Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolov
 ---
 
 ## Changelog
+
+### Make minify-html an optional dependency with `--minify` flag
+
+The `minify-html` dependency is now optional. Install with `uv sync --extra minify` and pass `--minify` to enable HTML/JS/CSS minification. Without the flag, output is unminified (but blank lines are still collapsed). CLI now uses `argparse` instead of manual `sys.argv` parsing.
 
 ### Fix: Hide empty "New attributes:" and "Allowed attributes:" headings
 

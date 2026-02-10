@@ -2,6 +2,7 @@
 # This file is licenced under the GNU AGPLv3 or later
 # (c) 2023 David Koňařík
 
+import re
 import sys
 from collections import defaultdict
 from copy import deepcopy
@@ -261,12 +262,16 @@ def _prefix_root_elements(elements, add_prefix):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <input.xsd> <output.html>", file=sys.stderr)
-        sys.exit(1)
+    import argparse
 
-    input_path = Path(sys.argv[1]).absolute()
-    output_path = Path(sys.argv[2]).absolute()
+    parser = argparse.ArgumentParser(description="Generate HTML documentation from XSD")
+    parser.add_argument("input", help="Input XSD file")
+    parser.add_argument("output", help="Output HTML file")
+    parser.add_argument("--minify", action="store_true", help="Minify HTML output")
+    args = parser.parse_args()
+
+    input_path = Path(args.input).absolute()
+    output_path = Path(args.output).absolute()
 
     log(f"Startuji generování dokumentace")
     log(f"Vstupní XSD: {input_path}")
@@ -326,9 +331,19 @@ def main():
         root_target_ns=resolver.root_target_ns,
     )
 
-    import minify_html
+    output = re.sub(r'\n\s*\n', '\n\n', output)
 
-    output = minify_html.minify(output, minify_js=True, minify_css=True)
+    if args.minify:
+        try:
+            import minify_html
+        except ImportError:
+            print(
+                "minify-html not installed. Install with: pip install xsd-by-example[minify]",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        log("Minifikuji HTML…")
+        output = minify_html.minify(output, minify_js=True, minify_css=True)
 
     log("Ukládám výstup…")
     output_path.write_text(output, encoding="utf-8")
