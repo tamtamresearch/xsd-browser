@@ -355,6 +355,7 @@ def main():
 
     if args.output is None or args.output == "-":
         log("Writing to stdout...")
+        sys.stdout.reconfigure(encoding="utf-8")
         sys.stdout.write(output)
     else:
         output_path = Path(args.output).absolute()
