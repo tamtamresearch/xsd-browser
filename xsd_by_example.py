@@ -18,7 +18,7 @@ def log(msg):
 
 
 def parse_xml(path):
-    log(f"Načítám XML: {path}")
+    log(f"Loading XML: {path}")
     return lxml.etree.parse(path)
 
 
@@ -110,7 +110,7 @@ class ImportResolver:
                 continue
             if ns_uri not in self.ns_to_prefix:
                 self.ns_to_prefix[ns_uri] = pfx
-                log(f"Registruji prefix '{pfx}' pro namespace {ns_uri}")
+                log(f"Registering prefix '{pfx}' for namespace {ns_uri}")
 
     def _derive_prefix_from_ns(self, ns_uri):
         last_part = ns_uri.rstrip("/").rsplit("/", 1)[-1]
@@ -130,7 +130,7 @@ class ImportResolver:
                 continue
 
             self.imported.add(include_path)
-            log(f"Importuji {include_path}")
+            log(f"Importing {include_path}")
 
             include_doc = lxml.etree.parse(include_path)
             include_schema = xpath_one(include_doc, "//xsd:schema")
@@ -149,21 +149,21 @@ class ImportResolver:
                 if not prefix:
                     prefix = self._derive_prefix_from_ns(ns)
                     self.ns_to_prefix[ns] = prefix
-                    log(f"Odvozuji prefix '{prefix}' pro namespace {ns}")
+                    log(f"Deriving prefix '{prefix}' for namespace {ns}")
                 add_prefix = prefix + ":"
-                log(f"Používám prefix '{add_prefix}' pro namespace {ns}")
+                log(f"Using prefix '{add_prefix}' for namespace {ns}")
             elif ns == self.root_target_ns and self.root_prefix:
                 add_prefix = self.root_prefix + ":"
-                log(f"Namespace {ns} je root s prefixem '{self.root_prefix}'")
+                log(f"Namespace {ns} is root with prefix '{self.root_prefix}'")
             elif ns == self.root_target_ns:
-                log(f"Namespace {ns} je root – neprefixuji")
+                log(f"Namespace {ns} is root — not prefixing")
 
-            # rekurzivně zpracujeme importy uvnitř importovaného souboru
+            # Recursively process imports within the imported file
             self.handle_imports(include_doc, include_path)
 
-            # pokud máme prefix, přepíšeme name/ref bez prefixu
+            # If we have a prefix, rewrite unprefixed name/ref
             if add_prefix:
-                # 1) Prefixujeme jména definic
+                # 1) Prefix definition names
                 for el in xpath(
                     include_schema,
                     "xsd:element[@name] | xsd:group[@name]"
@@ -173,24 +173,24 @@ class ImportResolver:
                     if ":" not in el.attrib["name"]:
                         el.attrib["name"] = add_prefix + el.attrib["name"]
 
-                # 2) Prefixujeme ref (tam prefix dává smysl vždy)
+                # 2) Prefix ref attributes
                 for el in xpath(include_schema, "//*[@ref]"):
                     if ":" not in el.attrib["ref"]:
                         el.attrib["ref"] = add_prefix + el.attrib["ref"]
 
-                # 3) Prefixujeme typy v @type, pokud nejsou builtin
+                # 3) Prefix @type unless builtin
                 for el in xpath(include_schema, "//*[@type]"):
                     t = el.attrib["type"]
                     if ":" not in t and not t.startswith("xsd:"):
                         el.attrib["type"] = add_prefix + t
 
-                # 4) Prefixujeme base v extension/restriction
+                # 4) Prefix @base in extension/restriction
                 for el in xpath(include_schema, "//*[@base]"):
                     b = el.attrib["base"]
                     if ":" not in b and not b.startswith("xsd:"):
                         el.attrib["base"] = add_prefix + b
 
-            # 5) Přemapujeme cross-namespace prefixy podle globálního registru
+            # 5) Remap cross-namespace prefixes via the global registry
             import_nsmap = include_schema.nsmap
             for attr in ("type", "base", "ref", "substitutionGroup"):
                 for el in xpath(include_schema, f"//*[@{attr}]"):
@@ -219,7 +219,7 @@ class ImportResolver:
                                 f" keeping '{val}'"
                             )
 
-            # přidáme obsah importovaného schema do hlavního
+            # Append imported schema contents to the main document
             for el in include_schema:
                 if el.tag == f"{{{XSD}}}annotation":
                     continue
@@ -273,17 +273,17 @@ def main():
     input_path = Path(args.input).absolute()
     output_path = Path(args.output).absolute()
 
-    log(f"Startuji generování dokumentace")
-    log(f"Vstupní XSD: {input_path}")
-    log(f"Výstupní HTML: {output_path}")
+    log(f"Starting documentation generation")
+    log(f"Input XSD: {input_path}")
+    log(f"Output HTML: {output_path}")
 
     if not input_path.exists():
-        print(f"Soubor {input_path} neexistuje", file=sys.stderr)
+        print(f"File {input_path} does not exist", file=sys.stderr)
         sys.exit(1)
 
     main_doc = parse_xml(input_path)
 
-    log("Zpracovávám importy…")
+    log("Processing imports...")
     resolver = ImportResolver(main_doc)
     # Snapshot original root children before imports add more
     original_root_children = list(resolver.main_schema_el)
@@ -301,7 +301,7 @@ def main():
     if xsd_prefixes - {"xsd"}:
         _normalize_xsd_prefixes(resolver.main_schema_el, xsd_prefixes)
 
-    log("Inicializuji Jinja2 šablonu…")
+    log("Initializing Jinja2 template...")
     template_env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(Path(__file__).parent),
         autoescape=True,
@@ -322,7 +322,7 @@ def main():
 
     template = template_env.get_template("main.html.j2")
 
-    log("Renderuji HTML…")
+    log("Rendering HTML...")
     output = template.render(
         main_xml_path=input_path,
         doc=main_doc,
@@ -342,13 +342,13 @@ def main():
                 file=sys.stderr,
             )
             sys.exit(1)
-        log("Minifikuji HTML…")
+        log("Minifying HTML...")
         output = minify_html.minify(output, minify_js=True, minify_css=True)
 
-    log("Ukládám výstup…")
+    log("Writing output...")
     output_path.write_text(output, encoding="utf-8")
 
-    log("Hotovo.")
+    log("Done.")
 
 
 if __name__ == "__main__":
