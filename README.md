@@ -1,102 +1,69 @@
-# XSD by Example
+# xsd-by-example
 
-`xsd_by_example.py` vezme XML Schema Definition (XSD) a vygeneruje přehledný HTML dokument, který ukazuje **příklad instance** odpovídající danému schématu.
-Výstup kombinuje ukázkový XML dokument s anotacemi, takže je snadné pochopit strukturu, povinné prvky, typy a vazby.
+Generate interactive, single-page HTML documentation from XSD (XML Schema) files.
 
-Je to alternativa ke klasickým grafickým generátorům XSD dokumentace – cílem je být **čitelnější, kompaktnější a intuitivnější**.
+> This project is a fork of [xsd_by_example](https://codeberg.org/dvdkon/xsd_by_example)
+> by David Koňařík. It has been substantially extended by
+> Roman Hořeňovský for [TamTam Research s.r.o.](https://www.tamtamresearch.com/)
 
----
+## Features
 
-## 📦 Funkce
+- Parses the root XSD and recursively resolves all `<xsd:import>` / `<xsd:include>` references
+- **Global namespace prefix registry** — collects namespace-to-prefix mappings from all imported schemas (not just the root), so transitive imports get correct prefixes automatically
+- Derives prefixes from namespace URIs when none are declared (e.g., `http://.../TEC_3_4` becomes `tec`)
+- Generates a **self-contained HTML file** with no external dependencies (CSS and JS are embedded inline)
+- Interactive navigation with hash-based routing (`#element-Name`, `#type-Name`, `#group-Name`)
+- Landing page with categorized index of all definitions
+- Collapsible element views with lazy-loaded content
+- Cross-reference links between elements, types, and groups
+- "Used by" sections showing where each definition is referenced
+- XSD built-in types link to the W3C XML Schema specification
+- Persistent open/close state via localStorage
 
-- Načítá hlavní XSD a všechny `<xsd:import>` / `<xsd:include>`
-- **Globální registr prefixů**: sbírá namespace→prefix mapování ze všech importovaných schémat, nejen z hlavního XSD. Tranzitivní importy (např. SFW → TEC → MMC) tak dostanou správné prefixy, i když je hlavní schéma nedeklaruje.
-- Pokud žádné schéma nedeklaruje prefix pro daný namespace, odvodí ho z URI (např. `http://…/TEC_3_4` → `tec`)
-- Typy z root namespace zůstávají bez prefixu; všechny ostatní importované typy jsou prefixovány
-- Generuje HTML pomocí Jinja2 šablony
-- Loguje průběh zpracování (na `stderr`)
-- Výstup ukládá do souboru
+## Installation
 
----
+Using [uv](https://docs.astral.sh/uv/) (recommended):
 
-## 🧭 Použití
-
-python3 xsd_by_example.py input.xsd output.html
-
-Příklad:
-
-python3 xsd_by_example.py schema/SFW_1_1.xsd out.html
-
-- `input.xsd` – hlavní XSD soubor
-- `output.html` – cesta k výslednému HTML souboru
-
-Logy se vypisují na `stderr`, aby nerušily HTML výstup.
-
----
-
-## ⚡ Použití s uv
-
-Projekt lze pohodlně spouštět pomocí **uv**, které se stará o virtuální prostředí i závislosti.
-
-### Instalace uv
-
-Linux/macOS:
-
-curl -LsSf https://astral.sh/uv/install.sh  sh
-
-Windows (PowerShell):
-
-powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 (astral.sh in Bing)  iex"
-
-### Instalace závislostí
-
-V kořenovém adresáři projektu:
-
+```bash
 uv sync
+```
 
-### Volitelné závislosti
+## Usage
 
-Projekt má volitelnou závislost na `minify-html`, která umožňuje minifikaci výstupního HTML/JS/CSS. Instalace:
+```bash
+xsd-by-example input.xsd output.html
+```
 
+Or with uv:
+
+```bash
+uv run xsd-by-example input.xsd output.html
+```
+
+## Optional: HTML Minification
+
+Install the optional `minify-html` dependency:
+
+```bash
 uv sync --extra minify
+```
 
-Poté lze při generování použít přepínač `--minify`:
+Then pass the `--minify` flag to minify the output HTML/JS/CSS:
 
-uv run xsd-by-example input.xsd output.html --minify
+```bash
+xsd-by-example input.xsd output.html --minify
+```
 
-Bez tohoto přepínače je výstup neminifikovaný (prázdné řádky jsou ale stále sloučeny).
-
-### Spuštění nástroje
-
-uv run xsd_by_example.py input.xsd output.html
-
-Například:
-
-uv run xsd_by_example.py schema/SFW_1_1.xsd out.html
-
-
-Výhody:
-
-- není potřeba ručně aktivovat `.venv`
-- uv automaticky použije správné prostředí
-- rychlé instalace a spouštění
-
----
-
-## ⚠️ Omezení
-
-Tento nástroj vznikl během víkendu a pokrývá jen část XSD specifikace.
-Některé konstrukce nemusí být podporované a je dobré si výstup zkontrolovat.
-
----
+Without `--minify`, output is unminified (blank lines are still collapsed).
 
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
 
----
-
-## 📝 Licence
+## License
 
 AGPL-3.0-or-later
-(c) 2023 David Koňařík
+
+Original work (c) 2023 David Koňařík
+
+Modified work (c) 2026 Roman Hořeňovský, TamTam Research s.r.o.
