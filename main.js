@@ -303,9 +303,19 @@ function getDetailsStorageKey() {
     return 'xbe-details-' + document.title;
 }
 
+function getGlobalUsagesOpen() {
+    return localStorage.getItem('xbe-usages-' + document.title) === 'true';
+}
+
+function setGlobalUsagesOpen(open) {
+    try {
+        localStorage.setItem('xbe-usages-' + document.title, open ? 'true' : 'false');
+    } catch(e) {}
+}
+
 /**
  * Retrieves all saved details state from localStorage.
- * @returns {Object.<string, {openElements: string[], usagesOpen: boolean}>}
+ * @returns {Object.<string, {openElements: string[]}>}
  *          Map of hash -> state object
  */
 function getAllDetailsState() {
@@ -330,10 +340,8 @@ function saveDetailsStateForHash(hash) {
         .forEach(d => {
             if (d.dataset.element) openElements.push(d.dataset.element);
         });
-    const usagesBox = document.querySelector('main details.usages-box');
     state[hash] = {
-        openElements,
-        usagesOpen: usagesBox ? usagesBox.open : false
+        openElements
     };
     try {
         localStorage.setItem(getDetailsStorageKey(), JSON.stringify(state));
@@ -358,14 +366,13 @@ function restoreDetailsState() {
     if (!currentHash) return;
     const state = getAllDetailsState();
     const hashState = state[currentHash];
-    if (!hashState) return;
     restoringState = true;
     try {
-        if (hashState.usagesOpen) {
+        if (getGlobalUsagesOpen()) {
             const usagesBox = document.querySelector('main details.usages-box');
             if (usagesBox) usagesBox.open = true;
         }
-        if (hashState.openElements && hashState.openElements.length > 0) {
+        if (hashState && hashState.openElements && hashState.openElements.length > 0) {
             const openSet = new Set(hashState.openElements);
             let changed = true;
             while (changed) {
@@ -419,5 +426,9 @@ window.addEventListener("DOMContentLoaded", showFromHash);
 // Save details state on every toggle (capture phase to catch before bubbling)
 document.addEventListener('toggle', function(e) {
     if (restoringState) return;
-    if (e.target.closest('main')) saveDetailsState();
+    if (!e.target.closest('main')) return;
+    if (e.target.matches('details.usages-box')) {
+        setGlobalUsagesOpen(e.target.open);
+    }
+    saveDetailsState();
 }, true);
