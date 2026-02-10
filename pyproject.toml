@@ -7,7 +7,11 @@ requires-python = ">=3.10"
 license = { text = "AGPL-3.0-or-later" }
 
 authors = [
-  { name = "David Koňařík" }
+  { name = "David Koňařík" },  # Original author
+  { name = "Roman Hořeňovský", email = "roman.horenovsky@tamtamresearch.com" },  # Fork author
+]
+maintainers = [
+  { name = "Roman Hořeňovský", email = "roman.horenovsky@tamtamresearch.com" },
 ]
 
 dependencies = [
@@ -21,8 +25,11 @@ minify = ["minify-html"]
 [project.scripts]
 xsd-by-example = "xsd_by_example:main"
 
-[tool.uv]
-# pokud používáš uv, můžeš sem dát specifické volby
+[project.urls]
+Homepage = "https://www.tamtamresearch.com/"
+Repository = "https://github.com/tamtamresearch/xsd_by_example"
+"Original Project" = "https://codeberg.org/dvdkon/xsd_by_example"
+Issues = "https://github.com/tamtamresearch/xsd_by_example/issues"
 
 [build-system]
 requires = ["hatchling"]

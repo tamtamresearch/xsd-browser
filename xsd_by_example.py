@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # This file is licenced under the GNU AGPLv3 or later
-# (c) 2023 David Koňařík
+# Original work (c) 2023 David Koňařík
+# Modified work (c) 2026 Roman Hořeňovský, TamTam Research s.r.o.
 
 import re
 import sys
