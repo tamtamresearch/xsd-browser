@@ -1,0 +1,22 @@
+[project]
+name = "xsd-by-example"
+version = "0.1.0"
+description = "Generate HTML documentation from XSD using lxml and Jinja2"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-or-later" }
+
+authors = [
+  { name = "David Koňařík" }
+]
+
+dependencies = [
+  "lxml",
+  "jinja2",
+]
+
+[project.scripts]
+xsd-by-example = "xsd_by_example:main"
+
+[tool.uv]
+# pokud používáš uv, můžeš sem dát specifické volby
