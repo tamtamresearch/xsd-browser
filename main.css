@@ -295,18 +295,28 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
 
 /* === Usages box === */
 .usages-box {
-    margin-bottom: 12px;
+    display: block;
+    margin: 6px 8px 12px;
+    padding: 7px 7px;
+    border-left: 3px solid #9ca3af;
+    border-top: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 3px;
+    background-color: #fff;
 }
 
-.usages-box > summary::marker {
-    display: none;
-}
 .usages-box > summary {
     display: flex;
-    margin-bottom: 6px;
+    list-style: none;
     cursor: pointer;
-    font-size: 13px;
-    color: #4b5563;
+    align-items: center;
+}
+.usages-box > summary::-webkit-details-marker {
+    display: none;
+}
+.usages-box > summary::marker {
+    content: "";
 }
 .usages-box > summary:hover {
     color: #1f2937;
@@ -320,16 +330,17 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
 .usages-box[open] > summary::before {
     content: "\25BE";
 }
-
 .usages-box .usages {
-    margin-left: 16px;
+    list-style: none;
+    padding-left: 16px;
+    margin: 4px 0 0;
 }
 .usages-box:not(:has(.usages li)) {
     display: none;
 }
-
 .usages a {
     font-size: 12px;
+    font-weight: 500;
 }
 
 /* === Landing page === */
