@@ -570,7 +570,7 @@
     <template id=landing-template>
         <div class=landing>
             {% if ns_to_prefix or root_target_ns %}
-            <section class=landing-prefixes>
+            <section class="landing-card landing-prefixes">
                 <details>
                     <summary><h2>Namespaces</h2></summary>
                     <div class=ns-grid>
@@ -596,7 +596,7 @@
             {% set simple_types = doc|xpath("//xsd:simpleType[@name]") %}
             {% set groups = doc|xpath("//xsd:group[@name]") %}
             {% if elements or complex_types or simple_types or groups %}
-            <section class=landing-definitions>
+            <section class="landing-card landing-definitions">
                 <details open>
                     <summary><h2>Schema Definitions</h2></summary>
                     <div class=landing-definitions-grid>
@@ -648,7 +648,7 @@
             </section>
             {% endif %}
 
-            <section class=landing-info>
+            <section class="landing-card landing-info">
                 <details>
                     <summary><h2>About</h2></summary>
                     <div class=info-grid>
