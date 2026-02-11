@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<xs:schema elementFormDefault="qualified" attributeFormDefault="unqualified" xmlns:cis="http://datex2.eu/schema/3/cisInformation" version="1" targetNamespace="http://datex2.eu/schema/3/cisInformation" xmlns:ex="http://datex2.eu/schema/3/exchangeInformation" xmlns:com="http://datex2.eu/schema/3/common" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="http://datex2.eu/schema/3/common" schemaLocation="DATEXII_3_Common.xsd" />
+  <xs:import namespace="http://datex2.eu/schema/3/exchangeInformation" schemaLocation="DATEXII_3_ExchangeInformation.xsd" />
+  <xs:complexType name="_PredefinedServiceEnum">
+    <xs:simpleContent>
+      <xs:extension base="cis:PredefinedServiceEnum">
+        <xs:attribute name="_extendedValue" type="xs:string" />
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  <xs:complexType name="_ServiceActionEnum">
+    <xs:simpleContent>
+      <xs:extension base="cis:ServiceActionEnum">
+        <xs:attribute name="_extendedValue" type="xs:string" />
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  <xs:complexType name="_ServiceActionStatusEnum">
+    <xs:simpleContent>
+      <xs:extension base="cis:ServiceActionStatusEnum">
+        <xs:attribute name="_extendedValue" type="xs:string" />
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+  <xs:complexType name="CISInformation">
+    <xs:annotation>
+      <xs:documentation>CIS information</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="serviceFeedback" type="cis:ServiceFeedback" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="serviceRequest" type="cis:ServiceRequest" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="_cisInformationExtension" type="com:_ExtensionType" minOccurs="0" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="PredefinedServiceEnum">
+    <xs:annotation>
+      <xs:documentation>list of predefined service requests</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="broadcastDelivery">
+        <xs:annotation>
+          <xs:documentation>Service delivery broadcast</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="other">
+        <xs:annotation>
+          <xs:documentation>other service</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="tmpActivation">
+        <xs:annotation>
+          <xs:documentation>Service TMP activation</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="vmsMessageProcessing">
+        <xs:annotation>
+          <xs:documentation>Activation of VMS Message processign on information</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="_extended" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ServiceActionEnum">
+    <xs:annotation>
+      <xs:documentation>The current or requested status of TMP activation during request, implementation and termination phases</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="agreement">
+        <xs:annotation>
+          <xs:documentation>request for CIS agreement</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="cancellation">
+        <xs:annotation>
+          <xs:documentation>request to cancel the CIS Agreement or Implementation Request before agreement or implementation phase is completed</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="implementation">
+        <xs:annotation>
+          <xs:documentation>the request of CIS Implementation, whenever no need of agreement proposal is needed, or a previous proposal have been agreed</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="processing">
+        <xs:annotation>
+          <xs:documentation>request to process information according to Requested Service (e.g. processing of any information to generate messages to display on VMS)</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="statusInformation">
+        <xs:annotation>
+          <xs:documentation>Request on previously delivered service request processing status information, to be delivered in Feedback</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="termination">
+        <xs:annotation>
+          <xs:documentation>request to terminate the CIS Activation once implemented</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="_extended" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ServiceActionStatusEnum">
+    <xs:annotation>
+      <xs:documentation>Defines values of service status</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="compliant">
+        <xs:annotation>
+          <xs:documentation>service request has been found compliant to required specification for the service</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="failed">
+        <xs:annotation>
+          <xs:documentation>service request failed during processing</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="notCompliant">
+        <xs:annotation>
+          <xs:documentation>service request has not been found compliant to required specification for the service</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="processing">
+        <xs:annotation>
+          <xs:documentation>service request processing fase is not yet completed</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="rejected">
+        <xs:annotation>
+          <xs:documentation>service request has been rejected by the service provider</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="scheduled">
+        <xs:annotation>
+          <xs:documentation>the Service Request had been scheduled for processing by the Service Provider</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="success">
+        <xs:annotation>
+          <xs:documentation>the Service Request had been successfully processed by the Service Provider</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="timedOut">
+        <xs:annotation>
+          <xs:documentation>the Service Request had not been fulfilled in the agreed time</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="_extended" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="ServiceFeedback">
+    <xs:annotation>
+      <xs:documentation>Feedback about a specific Service Request from the Service Implementer to the Requester</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="serviceRequestFeedbackReason" type="com:MultilingualString" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>additional text to feedback about the Status of the Service Request</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="serviceRequestStatus" type="cis:_ServiceActionStatusEnum" minOccurs="1" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>specifies the Status of Service request referenced</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="serviceRequestReference" type="com:VersionedReference" minOccurs="1" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Reference to the service request to which refers the Service Feedback </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="serviceProvider" type="ex:Agent">
+        <xs:annotation>
+          <xs:documentation>it identifies the service provider agent of the service feedback</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="_serviceFeedbackExtension" type="com:_ExtensionType" minOccurs="0" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ServiceRequest">
+    <xs:annotation>
+      <xs:documentation>Service Request from the Service Implementer to the Requester</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="elementToProcessReference" type="com:Reference" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Element reference to be process</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="elementToProcessVersionedReference" type="com:VersionedReference" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Element versioned reference to be process</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="expiryTime" type="com:VersionedReference" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>date time until which to implement the required action for Service</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="externalReference" type="com:String" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Extranle reference to be process</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="notPredefinedServiceName" type="com:String" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Name of service not predefined</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="predefinedService" type="cis:_PredefinedServiceEnum" minOccurs="1" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Type of predefined service</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="requestedAction" type="cis:_ServiceActionEnum" minOccurs="1" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>identifies the action requested for the specified Service</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="servicerRequestCreationTime" type="com:DateTime" minOccurs="1" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Time of creation request</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="servicerRequestVersionTime" type="com:DateTime" minOccurs="1" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Time of version request time</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="customServiceParameter" type="com:String" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>a string conveying information for custom parameter to Service</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="serviceRequester" type="ex:Agent">
+        <xs:annotation>
+          <xs:documentation>It identifies the service requester agent of the service request</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="serviceProvider" type="ex:Agent" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>It identifies the list of  the service provider agents of the service request</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="serviceRequestCondition" type="cis:ServiceRequestCondition" minOccurs="0" />
+      <xs:element name="_serviceRequestExtension" type="com:_ExtensionType" minOccurs="0" />
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string" use="required" />
+    <xs:attribute name="version" type="xs:string" use="required" />
+  </xs:complexType>
+  <xs:complexType name="ServiceRequestCondition">
+    <xs:annotation>
+      <xs:documentation>specifies the condition which is behind the need for the service request, e.g. a specific situation or situation record, travel times status, specific road data or external conditions</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="conditionDescription" type="com:MultilingualString" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>A multilingual description of the condition under which the Service Request is instantiated</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="externalIdCondition" type="com:String" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>en external reference ID to the condition for the Service Request</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="referencedCondition" type="com:Reference" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>the list of condition information which are referenced by a Identifiebla in payload publications</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="versionReferencedCondition" type="com:VersionedReference" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>the list of condition information which are version referenced by a Identifiebla in payload publications</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="_serviceRequestConditionExtension" type="com:_ExtensionType" minOccurs="0" />
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

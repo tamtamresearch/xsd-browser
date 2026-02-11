@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<xs:schema elementFormDefault="qualified" attributeFormDefault="unqualified" xmlns:tro="http://datex2.eu/schema/3/trafficRegulation" version="1" targetNamespace="http://datex2.eu/schema/3/trafficRegulation" xmlns:com="http://datex2.eu/schema/3/common" xmlns:loc="http://datex2.eu/schema/3/locationReferencing" xmlns:comx="http://datex2.eu/schema/3/commonExtension" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="http://datex2.eu/schema/3/commonExtension" schemaLocation="DATEXII_3_CommonExtension.xsd" />
+  <xs:import namespace="http://datex2.eu/schema/3/locationReferencing" schemaLocation="DATEXII_3_LocationReferencing.xsd" />
+  <xs:import namespace="http://datex2.eu/schema/3/common" schemaLocation="DATEXII_3_Common.xsd" />
+  <xs:complexType name="Condition" abstract="true">
+    <xs:annotation>
+      <xs:documentation>Specifies a condition for applicabilities or exemptions of a traffic regulation.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="negate" type="com:Boolean" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>If set to true means that the effect is the logical inverse of the specified condition.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="active" type="com:Boolean" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>If the condition is dynamic, this attribute shall be set to "true" if the condition is currently active and to "false" if the condition is currently inactive.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="legalBasis" type="tro:LegalBasis" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Legal basis where applicability characteristics or exemptions are specified.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="_conditionExtension" type="com:_ExtensionType" minOccurs="0" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="LegalBasis">
+    <xs:annotation>
+      <xs:documentation>Specification of a legal basis.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="name" type="com:MultilingualString" minOccurs="1" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Name of legal basis.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="version" type="com:String" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Version of legal basis.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="date" type="com:Date" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Date of legal basis.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="_legalBasisExtension" type="com:_ExtensionType" minOccurs="0" />
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

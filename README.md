@@ -64,6 +64,14 @@ If `output.html` is omitted (or set to `-`), the result is written to stdout.
 
 Output is minified by default. Use `--no-minify` to disable minification.
 
+### Example with bundled sample
+
+The repository includes DATEX II v3 Profile schemas for testing. To generate documentation from them:
+
+```bash
+xsd-browser samples/DATEXII_3_Profile/DATEXII_3_D2Payload.xsd DATEXII_3_D2Payload.html
+```
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
