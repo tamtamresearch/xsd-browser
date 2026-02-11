@@ -371,45 +371,51 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
     padding: 2px 0;
 }
 
-.landing-definitions {
+.landing-card {
     grid-column: 1 / -1;
 }
 
-.landing-definitions summary {
+.landing-card > details {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px 20px;
+    background: #fff;
+}
+
+.landing-card summary {
     cursor: pointer;
     list-style: revert;
 }
 
-.landing-definitions summary h2 {
+.landing-card summary h2 {
     display: inline;
     border-bottom: none;
     padding-bottom: 0;
+    margin: 0;
 }
 
 .landing-definitions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px;
-    margin-top: 12px;
+    gap: 20px 24px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
 }
 
-.landing-prefixes {
-    grid-column: 1 / -1;
-}
-
-.landing-prefixes summary {
-    cursor: pointer;
-    list-style: revert;
-}
-
-.landing-prefixes summary h2 {
-    display: inline;
-    border-bottom: none;
-    padding-bottom: 0;
+.landing-definitions-grid h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0 0 8px 0;
 }
 
 .landing-prefixes .ns-grid {
-    margin-top: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
 }
 
 .ns-grid {
@@ -450,26 +456,14 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
 }
 
 /* === Landing info block === */
-.landing-info {
-    grid-column: 1 / -1;
-}
-
-.landing-info summary {
-    cursor: pointer;
-    list-style: revert;
-}
-
-.landing-info summary h2 {
-    display: inline;
-    border-bottom: none;
-    padding-bottom: 0;
-}
 
 .info-grid {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 8px 16px;
-    margin-top: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
 }
 
 .info-label {
