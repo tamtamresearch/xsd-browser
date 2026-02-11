@@ -26,7 +26,7 @@ xsd-browser <input.xsd> <output.html>
 
 Example:
 ```bash
-xsd-browser c:\Work\TTR\tpeg\tpeg\working\tec-01\schema\SFW_1_1.xsd output\x.html
+xsd-browser samples\DATEXII_3_Profile\DATEXII_3_D2Payload.xsd output\x.html
 ```
 
 ## Dependencies
@@ -89,9 +89,8 @@ Generates a **self-contained HTML file** with embedded CSS and JavaScript. The t
 
 ## XSD Schemas Location
 
-- Root schemas per application: `c:\Work\TTR\tpeg\tpeg\working\<app>\schema\`
-- Shared/common schemas: `c:\Work\TTR\tpeg\tpeg\working\schema\`
-- Example root: `SFW_1_1.xsd` imports `TDT_2_1.xsd` and `TEC_3_4.xsd` from `../../schema/`
+- Demo schemas: `samples/DATEXII_3_Profile/`
+- Example root: `DATEXII_3_D2Payload.xsd` or `DATEXII_3_MessageContainer.xsd` from that directory
 - The schemas use `xs:` prefix (not `xsd:`), but the app handles this via namespace URI matching
 
 ## Important Notes
