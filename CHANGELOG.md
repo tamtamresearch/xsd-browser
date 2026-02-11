@@ -6,10 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-11
+
 ### Added
 
 - **Landing page footer** — Added a slim footer bar at the bottom of the landing page with "Built with xsd-browser vX.X.X" (linked to GitHub) and "TamTam Research s.r.o." (linked to homepage). Styled to match the header color scheme.
 - **Collapsible "About" block on landing page** — Shows source filename, generation timestamp, list of imported XSD files, schema stats (element/type/group counts), and generator version.
+- **Collapsible "Schema Definitions" section on landing page** — Elements, Complex Types, Simple Types, and Groups are now wrapped in a single collapsible section (open by default) for better scannability.
+- **Unified card styling for landing page sections** — Namespaces, Schema Definitions, and Generation Info sections share a consistent card look with bordered container, white background, and separator lines.
 
 ## [0.1.0] - 2026-02-11
 
