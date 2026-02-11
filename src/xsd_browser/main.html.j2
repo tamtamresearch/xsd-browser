@@ -592,50 +592,59 @@
             {% endif %}
 
             {% set elements = doc|xpath("xsd:element[@name]") %}
-            {% if elements %}
-            <section>
-                <h2>Elements</h2>
-                <ul>
-                    {% for el in elements %}
-                        <li><a href="#element-{{ el.attrib.name }}">{{ el.attrib.name }}</a></li>
-                    {% endfor %}
-                </ul>
-            </section>
-            {% endif %}
-
             {% set complex_types = doc|xpath("//xsd:complexType[@name]") %}
-            {% if complex_types %}
-            <section>
-                <h2>Complex Types</h2>
-                <ul>
-                    {% for ct in complex_types %}
-                        <li><a href="#type-{{ ct.attrib.name }}">{{ ct.attrib.name }}</a></li>
-                    {% endfor %}
-                </ul>
-            </section>
-            {% endif %}
-
             {% set simple_types = doc|xpath("//xsd:simpleType[@name]") %}
-            {% if simple_types %}
-            <section>
-                <h2>Simple Types</h2>
-                <ul>
-                    {% for st in simple_types %}
-                        <li><a href="#type-{{ st.attrib.name }}">{{ st.attrib.name }}</a></li>
-                    {% endfor %}
-                </ul>
-            </section>
-            {% endif %}
-
             {% set groups = doc|xpath("//xsd:group[@name]") %}
-            {% if groups %}
-            <section>
-                <h2>Groups</h2>
-                <ul>
-                    {% for g in groups %}
-                        <li><a href="#group-{{ g.attrib.name }}">{{ g.attrib.name }}</a></li>
-                    {% endfor %}
-                </ul>
+            {% if elements or complex_types or simple_types or groups %}
+            <section class=landing-definitions>
+                <details open>
+                    <summary><h2>Schema Definitions</h2></summary>
+                    <div class=landing-definitions-grid>
+                    {% if elements %}
+                    <section>
+                        <h3>Elements</h3>
+                        <ul>
+                            {% for el in elements %}
+                                <li><a href="#element-{{ el.attrib.name }}">{{ el.attrib.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+
+                    {% if complex_types %}
+                    <section>
+                        <h3>Complex Types</h3>
+                        <ul>
+                            {% for ct in complex_types %}
+                                <li><a href="#type-{{ ct.attrib.name }}">{{ ct.attrib.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+
+                    {% if simple_types %}
+                    <section>
+                        <h3>Simple Types</h3>
+                        <ul>
+                            {% for st in simple_types %}
+                                <li><a href="#type-{{ st.attrib.name }}">{{ st.attrib.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+
+                    {% if groups %}
+                    <section>
+                        <h3>Groups</h3>
+                        <ul>
+                            {% for g in groups %}
+                                <li><a href="#group-{{ g.attrib.name }}">{{ g.attrib.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+                    </div>
+                </details>
             </section>
             {% endif %}
 
