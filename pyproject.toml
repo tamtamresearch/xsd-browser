@@ -17,10 +17,8 @@ maintainers = [
 dependencies = [
   "lxml",
   "jinja2",
+  "minify-html",
 ]
-
-[project.optional-dependencies]
-minify = ["minify-html"]
 
 [project.scripts]
 xsd-browser = "xsd_browser.main:main"

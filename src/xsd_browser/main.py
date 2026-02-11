@@ -13,6 +13,7 @@ from pathlib import Path
 import jinja2
 import lxml.etree
 import lxml.objectify
+import minify_html
 
 logger = logging.getLogger("xsd_browser")
 
@@ -276,7 +277,9 @@ def main():
         default=None,
         help="Output HTML file. If omitted or set to '-', the result is written to stdout.",
     )
-    parser.add_argument("--minify", action="store_true", help="Minify HTML output")
+    parser.add_argument(
+        "--no-minify", action="store_true", help="Skip HTML minification"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -354,14 +357,7 @@ def main():
 
     output = re.sub(r'\n\s*\n', '\n\n', output)
 
-    if args.minify:
-        try:
-            import minify_html
-        except ImportError:
-            logger.error(
-                "minify-html not installed. Install with: uv pip install xsd-browser[minify]"
-            )
-            sys.exit(1)
+    if not args.no_minify:
         logger.info("Minifying HTML...")
         output = minify_html.minify(output, minify_js=True, minify_css=True)
 

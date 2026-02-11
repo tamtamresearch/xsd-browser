@@ -273,10 +273,6 @@ source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
     { name = "lxml" },
-]
-
-[package.optional-dependencies]
-minify = [
     { name = "minify-html" },
 ]
 
@@ -284,6 +280,5 @@ minify = [
 requires-dist = [
     { name = "jinja2" },
     { name = "lxml" },
-    { name = "minify-html", marker = "extra == 'minify'" },
+    { name = "minify-html" },
 ]
-provides-extras = ["minify"]

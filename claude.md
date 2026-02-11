@@ -33,6 +33,7 @@ xsd-browser samples\DATEXII_3_Profile\DATEXII_3_D2Payload.xsd output\x.html
 
 - **lxml** - XML/XSD parsing, XPath queries, pretty-printing
 - **jinja2** - HTML template rendering (uses `jinja2.ext.do` extension)
+- **minify-html** - HTML minification (enabled by default, disable with `--no-minify`)
 - Build system: **uv_build**
 - Linting: **ruff** (line-length 100, Python 3.10+)
 

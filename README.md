@@ -27,13 +27,7 @@ Generate interactive, single-page HTML documentation from XSD (XML Schema) files
 ### Install from GitHub
 
 ```bash
-uv tool install "xsd-browser @ git+https://github.com/tamtamresearch/xsd-browser.git"
-```
-
-With HTML minification support:
-
-```bash
-uv tool install "xsd-browser[minify] @ git+https://github.com/tamtamresearch/xsd-browser.git"
+uv tool install "git+https://github.com/tamtamresearch/xsd-browser.git"
 ```
 
 To uninstall:
@@ -57,13 +51,7 @@ xsd-browser input.xsd [output.html]
 ### Run without installing
 
 ```bash
-uv tool run --from "xsd-browser @ git+https://github.com/tamtamresearch/xsd-browser.git" xsd-browser input.xsd [output.html]
-```
-
-With minification:
-
-```bash
-uv tool run --from "xsd-browser[minify] @ git+https://github.com/tamtamresearch/xsd-browser.git" xsd-browser input.xsd [output.html] --minify
+uv tool run "git+https://github.com/tamtamresearch/xsd-browser.git" input.xsd [output.html]
 ```
 
 ### Run from local checkout
@@ -74,21 +62,7 @@ uv run xsd-browser input.xsd [output.html]
 
 If `output.html` is omitted (or set to `-`), the result is written to stdout.
 
-## Optional: HTML Minification
-
-Install the optional `minify-html` dependency:
-
-```bash
-uv sync --extra minify
-```
-
-Then pass the `--minify` flag to minify the output HTML/JS/CSS:
-
-```bash
-xsd-browser input.xsd output.html --minify
-```
-
-Without `--minify`, output is unminified (blank lines are still collapsed).
+Output is minified by default. Use `--no-minify` to disable minification.
 
 ## Changelog
 
