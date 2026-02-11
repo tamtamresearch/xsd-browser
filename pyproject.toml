@@ -1,5 +1,5 @@
 [project]
-name = "xsd-by-example"
+name = "xsd-browser"
 version = "0.1.0"
 description = "Generate HTML documentation from XSD using lxml and Jinja2"
 readme = "README.md"
@@ -23,13 +23,13 @@ dependencies = [
 minify = ["minify-html"]
 
 [project.scripts]
-xsd-by-example = "xsd_by_example:main"
+xsd-browser = "xsd_browser:main"
 
 [project.urls]
 Homepage = "https://www.tamtamresearch.com/"
-Repository = "https://github.com/tamtamresearch/xsd_by_example"
+Repository = "https://github.com/tamtamresearch/xsd-browser"
 "Original Project" = "https://codeberg.org/dvdkon/xsd_by_example"
-Issues = "https://github.com/tamtamresearch/xsd_by_example/issues"
+Issues = "https://github.com/tamtamresearch/xsd-browser/issues"
 
 [build-system]
 requires = ["hatchling"]

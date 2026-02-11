@@ -346,7 +346,7 @@ def main():
             import minify_html
         except ImportError:
             print(
-                "minify-html not installed. Install with: pip install xsd-by-example[minify]",
+                "minify-html not installed. Install with: uv pip install xsd-browser[minify]",
                 file=sys.stderr,
             )
             sys.exit(1)

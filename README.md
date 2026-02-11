@@ -1,9 +1,9 @@
-# xsd-by-example
+# xsd-browser
 
 Generate interactive, single-page HTML documentation from XSD (XML Schema) files.
 
 > This project is a fork of [xsd_by_example](https://codeberg.org/dvdkon/xsd_by_example)
-> by David Koňařík. It has been substantially extended by
+> by David Koňařík. It has been substantially extended and renamed to **xsd-browser** by
 > Roman Hořeňovský for [TamTam Research s.r.o.](https://www.tamtamresearch.com/)
 
 ## Features
@@ -31,13 +31,13 @@ uv sync
 ## Usage
 
 ```bash
-xsd-by-example input.xsd [output.html]
+xsd-browser input.xsd [output.html]
 ```
 
 Or with uv:
 
 ```bash
-uv run xsd-by-example input.xsd [output.html]
+uv run xsd-browser input.xsd [output.html]
 ```
 
 If `output.html` is omitted (or set to `-`), the result is written to stdout.
@@ -53,7 +53,7 @@ uv sync --extra minify
 Then pass the `--minify` flag to minify the output HTML/JS/CSS:
 
 ```bash
-xsd-by-example input.xsd output.html --minify
+xsd-browser input.xsd output.html --minify
 ```
 
 Without `--minify`, output is unminified (blank lines are still collapsed).

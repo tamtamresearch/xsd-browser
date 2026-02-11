@@ -1,4 +1,4 @@
-# xsd-by-example
+# xsd-browser
 
 ## Purpose
 
@@ -7,23 +7,23 @@ Renders XSD (XML Schema Definition) files into interactive single-page HTML docu
 ## Project Structure
 
 ```
-xsd_by_example.py   - Main (and only) application file. Python CLI entry point.
+xsd_browser.py   - Main (and only) application file. Python CLI entry point.
 main.html.j2        - Jinja2 template that generates the output HTML (uses includes for JS/CSS, contains Jinja2 macros).
 main.js             - JavaScript code included by main.html.j2 (custom elements, navigation, state management).
 main.css            - CSS styles included by main.html.j2 (typography, layout, components).
-pyproject.toml       - Project config. Entry point: xsd-by-example = "xsd_by_example:main"
+pyproject.toml       - Project config. Entry point: xsd-browser = "xsd_browser:main"
 output/              - Generated HTML output directory (not tracked in git).
 ```
 
 ## How to Run
 
 ```bash
-xsd-by-example <input.xsd> <output.html>
+xsd-browser <input.xsd> <output.html>
 ```
 
 Example:
 ```bash
-xsd-by-example c:\Work\TTR\tpeg\tpeg\working\tec-01\schema\SFW_1_1.xsd output\x.html
+xsd-browser c:\Work\TTR\tpeg\tpeg\working\tec-01\schema\SFW_1_1.xsd output\x.html
 ```
 
 ## Dependencies
@@ -35,7 +35,7 @@ xsd-by-example c:\Work\TTR\tpeg\tpeg\working\tec-01\schema\SFW_1_1.xsd output\x.
 
 ## Architecture
 
-### Python side (`xsd_by_example.py`)
+### Python side (`xsd_browser.py`)
 
 1. **Parse** the root XSD file with `lxml.etree.parse()`
 2. **Resolve imports** via `ImportResolver` class:
@@ -99,4 +99,4 @@ Generates a **self-contained HTML file** with embedded CSS and JavaScript. The t
 - The prefix registry is first-come-first-served: if two schemas declare different prefixes for the same namespace, the first one encountered wins
 - Log messages are in Czech (original author's language)
 - The `usages_by_name` dict is passed into the template and mutated during render via the `record_usage` macro and `jinja2.ext.do`
-- Only one app file (`xsd_by_example.py`) -- all changes go there or in the template files (`main.html.j2`, `main.js`, `main.css`)
+- Only one app file (`xsd_browser.py`) -- all changes go there or in the template files (`main.html.j2`, `main.js`, `main.css`)
