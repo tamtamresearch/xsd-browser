@@ -3,6 +3,7 @@
 # Original work (c) 2023 David Koňařík
 # Modified work (c) 2026 Roman Hořeňovský, TamTam Research s.r.o.
 
+import logging
 import re
 import sys
 from collections import defaultdict
@@ -13,13 +14,11 @@ import jinja2
 import lxml.etree
 import lxml.objectify
 
-
-def log(msg):
-    print(f"[INFO] {msg}", file=sys.stderr)
+logger = logging.getLogger("xsd_browser")
 
 
 def parse_xml(path):
-    log(f"Loading XML: {path}")
+    logger.info("Loading XML: %s", path)
     return lxml.etree.parse(path)
 
 
@@ -111,7 +110,7 @@ class ImportResolver:
                 continue
             if ns_uri not in self.ns_to_prefix:
                 self.ns_to_prefix[ns_uri] = pfx
-                log(f"Registering prefix '{pfx}' for namespace {ns_uri}")
+                logger.info("Registering prefix '%s' for namespace %s", pfx, ns_uri)
 
     def _derive_prefix_from_ns(self, ns_uri):
         last_part = ns_uri.rstrip("/").rsplit("/", 1)[-1]
@@ -131,13 +130,13 @@ class ImportResolver:
                 continue
 
             self.imported.add(include_path)
-            log(f"Importing {include_path}")
+            logger.info("Importing %s", include_path)
 
             try:
                 include_doc = lxml.etree.parse(include_path)
             except OSError:
-                log(f"Error: Cannot read imported schema file: {include_path}")
-                log(f"       Referenced from: {path}")
+                logger.error("Cannot read imported schema file: %s", include_path)
+                logger.error("Referenced from: %s", path)
                 sys.exit(1)
             include_schema = xpath_one(include_doc, "//xsd:schema")
 
@@ -155,14 +154,14 @@ class ImportResolver:
                 if not prefix:
                     prefix = self._derive_prefix_from_ns(ns)
                     self.ns_to_prefix[ns] = prefix
-                    log(f"Deriving prefix '{prefix}' for namespace {ns}")
+                    logger.info("Deriving prefix '%s' for namespace %s", prefix, ns)
                 add_prefix = prefix + ":"
-                log(f"Using prefix '{add_prefix}' for namespace {ns}")
+                logger.info("Using prefix '%s' for namespace %s", add_prefix, ns)
             elif ns == self.root_target_ns and self.root_prefix:
                 add_prefix = self.root_prefix + ":"
-                log(f"Namespace {ns} is root with prefix '{self.root_prefix}'")
+                logger.info("Namespace %s is root with prefix '%s'", ns, self.root_prefix)
             elif ns == self.root_target_ns:
-                log(f"Namespace {ns} is root — not prefixing")
+                logger.info("Namespace %s is root — not prefixing", ns)
 
             # Recursively process imports within the imported file
             self.handle_imports(include_doc, include_path)
@@ -220,9 +219,9 @@ class ImportResolver:
                         if registry_prefix:
                             el.attrib[attr] = registry_prefix + ":" + local
                         else:
-                            log(
-                                f"WARNING: No registry prefix for {ref_ns},"
-                                f" keeping '{val}'"
+                            logger.warning(
+                                "No registry prefix for %s, keeping '%s'",
+                                ref_ns, val,
                             )
 
             # Append imported schema contents to the main document
@@ -281,22 +280,24 @@ def main():
     parser.add_argument("--minify", action="store_true", help="Minify HTML output")
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
     input_path = Path(args.input).absolute()
 
-    log(f"Starting documentation generation")
-    log(f"Input XSD: {input_path}")
+    logger.info("Starting documentation generation")
+    logger.info("Input XSD: %s", input_path)
     if args.output is not None and args.output != "-":
-        log(f"Output HTML: {Path(args.output).absolute()}")
+        logger.info("Output HTML: %s", Path(args.output).absolute())
     else:
-        log(f"Output HTML: stdout")
+        logger.info("Output HTML: stdout")
 
     if not input_path.exists():
-        print(f"File {input_path} does not exist", file=sys.stderr)
+        logger.error("File %s does not exist", input_path)
         sys.exit(1)
 
     main_doc = parse_xml(input_path)
 
-    log("Processing imports...")
+    logger.info("Processing imports...")
     resolver = ImportResolver(main_doc)
     # Snapshot original root children before imports add more
     original_root_children = list(resolver.main_schema_el)
@@ -314,7 +315,7 @@ def main():
     if xsd_prefixes - {"xsd"}:
         _normalize_xsd_prefixes(resolver.main_schema_el, xsd_prefixes)
 
-    log("Initializing Jinja2 template...")
+    logger.info("Initializing Jinja2 template...")
     template_env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(Path(__file__).parent),
         autoescape=True,
@@ -335,7 +336,7 @@ def main():
 
     template = template_env.get_template("main.html.j2")
 
-    log("Rendering HTML...")
+    logger.info("Rendering HTML...")
     output = template.render(
         main_xml_path=input_path,
         doc=main_doc,
@@ -350,24 +351,23 @@ def main():
         try:
             import minify_html
         except ImportError:
-            print(
-                "minify-html not installed. Install with: uv pip install xsd-browser[minify]",
-                file=sys.stderr,
+            logger.error(
+                "minify-html not installed. Install with: uv pip install xsd-browser[minify]"
             )
             sys.exit(1)
-        log("Minifying HTML...")
+        logger.info("Minifying HTML...")
         output = minify_html.minify(output, minify_js=True, minify_css=True)
 
     if args.output is None or args.output == "-":
-        log("Writing to stdout...")
+        logger.info("Writing to stdout...")
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stdout.write(output)
     else:
         output_path = Path(args.output).absolute()
-        log(f"Writing output to {output_path}...")
+        logger.info("Writing output to %s...", output_path)
         output_path.write_text(output, encoding="utf-8")
 
-    log("Done.")
+    logger.info("Done.")
 
 
 if __name__ == "__main__":
