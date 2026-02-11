@@ -133,7 +133,12 @@ class ImportResolver:
             self.imported.add(include_path)
             log(f"Importing {include_path}")
 
-            include_doc = lxml.etree.parse(include_path)
+            try:
+                include_doc = lxml.etree.parse(include_path)
+            except OSError:
+                log(f"Error: Cannot read imported schema file: {include_path}")
+                log(f"       Referenced from: {path}")
+                sys.exit(1)
             include_schema = xpath_one(include_doc, "//xsd:schema")
 
             # Collect prefixes from imported schema into global registry
