@@ -94,6 +94,14 @@ Generates a **self-contained HTML file** with embedded CSS and JavaScript. The t
 - Example root: `DATEXII_3_D2Payload.xsd` or `DATEXII_3_MessageContainer.xsd` from that directory
 - The schemas use `xs:` prefix (not `xsd:`), but the app handles this via namespace URI matching
 
+## Release Process
+
+1. Update version in `pyproject.toml` (`version = "X.Y.Z"`) — this is the single source of truth, read at runtime via `importlib.metadata.version("xsd-browser")`
+2. Move `[Unreleased]` entries in `CHANGELOG.md` to a new `## [X.Y.Z] - YYYY-MM-DD` section (keep an empty `[Unreleased]` header above it)
+3. Commit: `Release X.Y.Z`
+4. Tag: `git tag vX.Y.Z`
+5. Merge to `master` and push with tags: `git push origin master --tags`
+
 ## Important Notes
 
 - The XSD namespace constant is `http://www.w3.org/2001/XMLSchema` (variable `XSD`)
