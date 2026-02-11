@@ -365,6 +365,8 @@ def main():
         logger.info("Writing to stdout...")
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stdout.write(output)
+        if not output.endswith("\n"):
+            sys.stdout.write("\n")
     else:
         logger.info(f"Writing output to {output_path}...")
         try:
