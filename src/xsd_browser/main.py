@@ -294,6 +294,14 @@ def main():
         logger.error(f"File {input_path} does not exist")
         sys.exit(1)
 
+    if args.output is not None and args.output != "-":
+        output_path = Path(args.output).absolute()
+        if not output_path.parent.is_dir():
+            logger.error(f"Output directory does not exist: {output_path.parent}")
+            sys.exit(1)
+    else:
+        output_path = None
+
     main_doc = parse_xml(input_path)
 
     logger.info("Processing imports...")
@@ -357,14 +365,17 @@ def main():
         logger.info("Minifying HTML...")
         output = minify_html.minify(output, minify_js=True, minify_css=True)
 
-    if args.output is None or args.output == "-":
+    if output_path is None:
         logger.info("Writing to stdout...")
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stdout.write(output)
     else:
-        output_path = Path(args.output).absolute()
         logger.info(f"Writing output to {output_path}...")
-        output_path.write_text(output, encoding="utf-8")
+        try:
+            output_path.write_text(output, encoding="utf-8")
+        except OSError as e:
+            logger.error(f"Failed to write {output_path}: {e.strerror}")
+            sys.exit(1)
 
     logger.info("Done.")
 
