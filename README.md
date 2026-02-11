@@ -22,7 +22,27 @@ Generate interactive, single-page HTML documentation from XSD (XML Schema) files
 
 ## Installation
 
-Using [uv](https://docs.astral.sh/uv/) (recommended):
+[uv](https://docs.astral.sh/uv/) is a fast Python package manager and runner. It is the recommended way to install and run `xsd-browser`.
+
+### Install from GitHub
+
+```bash
+uv tool install "xsd-browser @ git+https://github.com/tamtamresearch/xsd-browser.git"
+```
+
+With HTML minification support:
+
+```bash
+uv tool install "xsd-browser[minify] @ git+https://github.com/tamtamresearch/xsd-browser.git"
+```
+
+To uninstall:
+
+```bash
+uv tool uninstall xsd-browser
+```
+
+### Local development
 
 ```bash
 uv sync
@@ -34,7 +54,19 @@ uv sync
 xsd-browser input.xsd [output.html]
 ```
 
-Or with uv:
+### Run without installing
+
+```bash
+uv tool run --from "xsd-browser @ git+https://github.com/tamtamresearch/xsd-browser.git" xsd-browser input.xsd [output.html]
+```
+
+With minification:
+
+```bash
+uv tool run --from "xsd-browser[minify] @ git+https://github.com/tamtamresearch/xsd-browser.git" xsd-browser input.xsd [output.html] --minify
+```
+
+### Run from local checkout
 
 ```bash
 uv run xsd-browser input.xsd [output.html]

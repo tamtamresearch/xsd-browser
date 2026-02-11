@@ -7,12 +7,15 @@ Renders XSD (XML Schema Definition) files into interactive single-page HTML docu
 ## Project Structure
 
 ```
-xsd_browser.py   - Main (and only) application file. Python CLI entry point.
-main.html.j2        - Jinja2 template that generates the output HTML (uses includes for JS/CSS, contains Jinja2 macros).
-main.js             - JavaScript code included by main.html.j2 (custom elements, navigation, state management).
-main.css            - CSS styles included by main.html.j2 (typography, layout, components).
-pyproject.toml       - Project config. Entry point: xsd-browser = "xsd_browser:main"
-output/              - Generated HTML output directory (not tracked in git).
+src/xsd_browser/         - Python package (src layout)
+  main.py                - Main application file. Python CLI entry point.
+  main.html.j2           - Jinja2 template that generates the output HTML (uses includes for JS/CSS, contains Jinja2 macros).
+  main.js                - JavaScript code included by main.html.j2 (custom elements, navigation, state management).
+  main.css               - CSS styles included by main.html.j2 (typography, layout, components).
+  __main__.py            - Enables `python -m xsd_browser` execution.
+  __init__.py            - Package init (empty).
+pyproject.toml           - Project config. Entry point: xsd-browser = "xsd_browser.main:main". Build backend: uv_build.
+output/                  - Generated HTML output directory (not tracked in git).
 ```
 
 ## How to Run
@@ -30,12 +33,12 @@ xsd-browser c:\Work\TTR\tpeg\tpeg\working\tec-01\schema\SFW_1_1.xsd output\x.htm
 
 - **lxml** - XML/XSD parsing, XPath queries, pretty-printing
 - **jinja2** - HTML template rendering (uses `jinja2.ext.do` extension)
-- Build system: **hatchling**
+- Build system: **uv_build**
 - Linting: **ruff** (line-length 100, Python 3.10+)
 
 ## Architecture
 
-### Python side (`xsd_browser.py`)
+### Python side (`src/xsd_browser/main.py`)
 
 1. **Parse** the root XSD file with `lxml.etree.parse()`
 2. **Resolve imports** via `ImportResolver` class:
@@ -99,4 +102,5 @@ Generates a **self-contained HTML file** with embedded CSS and JavaScript. The t
 - The prefix registry is first-come-first-served: if two schemas declare different prefixes for the same namespace, the first one encountered wins
 - Log messages are in Czech (original author's language)
 - The `usages_by_name` dict is passed into the template and mutated during render via the `record_usage` macro and `jinja2.ext.do`
-- Only one app file (`xsd_browser.py`) -- all changes go there or in the template files (`main.html.j2`, `main.js`, `main.css`)
+- All source lives in `src/xsd_browser/` -- main code in `main.py`, templates in `main.html.j2`, `main.js`, `main.css`
+- Can be run as `xsd-browser` (CLI entry point), or `python -m xsd_browser`

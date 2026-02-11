@@ -27,4 +27,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- **Restructure to `uv` packaged application with src layout** — Moved from flat layout to `src/xsd_browser/` package. Switched build backend from hatchling to `uv_build`. Added `__main__.py` for `python -m xsd_browser` support. Can now be installed via `uv tool install` directly from GitHub.
 - **Refactor: Externalize CSS and JS from main.html.j2** — Split the monolithic template into separate `main.js` and `main.css` files for better maintainability. The generated HTML output is unchanged (still a single self-contained file).
