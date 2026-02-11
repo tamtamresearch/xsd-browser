@@ -18,7 +18,7 @@ logger = logging.getLogger("xsd_browser")
 
 
 def parse_xml(path):
-    logger.info("Loading XML: %s", path)
+    logger.info(f"Loading XML: {path}")
     return lxml.etree.parse(path)
 
 
@@ -110,7 +110,7 @@ class ImportResolver:
                 continue
             if ns_uri not in self.ns_to_prefix:
                 self.ns_to_prefix[ns_uri] = pfx
-                logger.info("Registering prefix '%s' for namespace %s", pfx, ns_uri)
+                logger.info(f"Registering prefix '{pfx}' for namespace {ns_uri}")
 
     def _derive_prefix_from_ns(self, ns_uri):
         last_part = ns_uri.rstrip("/").rsplit("/", 1)[-1]
@@ -130,13 +130,13 @@ class ImportResolver:
                 continue
 
             self.imported.add(include_path)
-            logger.info("Importing %s", include_path)
+            logger.info(f"Importing {include_path}")
 
             try:
                 include_doc = lxml.etree.parse(include_path)
             except OSError:
-                logger.error("Cannot read imported schema file: %s", include_path)
-                logger.error("Referenced from: %s", path)
+                logger.error(f"Cannot read imported schema file: {include_path}")
+                logger.error(f"Referenced from: {path}")
                 sys.exit(1)
             include_schema = xpath_one(include_doc, "//xsd:schema")
 
@@ -154,14 +154,14 @@ class ImportResolver:
                 if not prefix:
                     prefix = self._derive_prefix_from_ns(ns)
                     self.ns_to_prefix[ns] = prefix
-                    logger.info("Deriving prefix '%s' for namespace %s", prefix, ns)
+                    logger.info(f"Deriving prefix '{prefix}' for namespace {ns}")
                 add_prefix = prefix + ":"
-                logger.info("Using prefix '%s' for namespace %s", add_prefix, ns)
+                logger.info(f"Using prefix '{add_prefix}' for namespace {ns}")
             elif ns == self.root_target_ns and self.root_prefix:
                 add_prefix = self.root_prefix + ":"
-                logger.info("Namespace %s is root with prefix '%s'", ns, self.root_prefix)
+                logger.info(f"Namespace {ns} is root with prefix '{self.root_prefix}'")
             elif ns == self.root_target_ns:
-                logger.info("Namespace %s is root — not prefixing", ns)
+                logger.info(f"Namespace {ns} is root — not prefixing")
 
             # Recursively process imports within the imported file
             self.handle_imports(include_doc, include_path)
@@ -220,8 +220,7 @@ class ImportResolver:
                             el.attrib[attr] = registry_prefix + ":" + local
                         else:
                             logger.warning(
-                                "No registry prefix for %s, keeping '%s'",
-                                ref_ns, val,
+                                f"No registry prefix for {ref_ns}, keeping '{val}'"
                             )
 
             # Append imported schema contents to the main document
@@ -285,14 +284,14 @@ def main():
     input_path = Path(args.input).absolute()
 
     logger.info("Starting documentation generation")
-    logger.info("Input XSD: %s", input_path)
+    logger.info(f"Input XSD: {input_path}")
     if args.output is not None and args.output != "-":
-        logger.info("Output HTML: %s", Path(args.output).absolute())
+        logger.info(f"Output HTML: {Path(args.output).absolute()}")
     else:
         logger.info("Output HTML: stdout")
 
     if not input_path.exists():
-        logger.error("File %s does not exist", input_path)
+        logger.error(f"File {input_path} does not exist")
         sys.exit(1)
 
     main_doc = parse_xml(input_path)
@@ -364,7 +363,7 @@ def main():
         sys.stdout.write(output)
     else:
         output_path = Path(args.output).absolute()
-        logger.info("Writing output to %s...", output_path)
+        logger.info(f"Writing output to {output_path}...")
         output_path.write_text(output, encoding="utf-8")
 
     logger.info("Done.")
