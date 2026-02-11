@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Landing page footer** — Added a slim footer bar at the bottom of the landing page with "Built with xsd-browser vX.X.X" (linked to GitHub) and "TamTam Research s.r.o." (linked to homepage). Styled to match the header color scheme.
+- **Collapsible "About" block on landing page** — Shows source filename, generation timestamp, list of imported XSD files, schema stats (element/type/group counts), and generator version.
+
 ## [0.1.0] - 2026-02-11
 
 ### Added

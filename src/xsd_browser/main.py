@@ -3,11 +3,13 @@
 # Original work (c) 2023 David Koňařík
 # Modified work (c) 2026 Roman Hořeňovský, TamTam Research s.r.o.
 
+import importlib.metadata
 import logging
 import re
 import sys
 from collections import defaultdict
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 
 import jinja2
@@ -347,12 +349,20 @@ def main():
     template = template_env.get_template("main.html.j2")
 
     logger.info("Rendering HTML...")
+    try:
+        version = importlib.metadata.version("xsd-browser")
+    except importlib.metadata.PackageNotFoundError:
+        version = "dev"
+
     output = template.render(
         main_xml_path=input_path,
         doc=main_doc,
         usages_by_name=defaultdict(set),
         ns_to_prefix=resolver.ns_to_prefix,
         root_target_ns=resolver.root_target_ns,
+        generated_at=datetime.now(),
+        version=version,
+        imported_files=sorted(p.name for p in resolver.imported),
     )
 
     output = re.sub(r'\n\s*\n', '\n\n', output)

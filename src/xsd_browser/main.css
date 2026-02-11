@@ -426,3 +426,70 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
     color: #666;
     font-style: italic;
 }
+
+/* === Landing info block === */
+.landing-info {
+    grid-column: 1 / -1;
+}
+
+.landing-info summary {
+    cursor: pointer;
+    list-style: revert;
+}
+
+.landing-info summary h2 {
+    display: inline;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    margin-top: 12px;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+}
+
+.info-value {
+    color: #4b5563;
+}
+
+.info-value small {
+    color: #6b7280;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+/* === Landing footer === */
+.landing-footer {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #2c3e50;
+    padding: 10px 16px;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.landing-footer, .landing-footer span {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.landing-footer a {
+    color: #cbd5e1;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.landing-footer a:hover {
+    color: #fff;
+    text-decoration: underline;
+}

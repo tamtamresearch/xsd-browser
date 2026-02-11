@@ -639,6 +639,39 @@
             </section>
             {% endif %}
 
+            <section class=landing-info>
+                <details>
+                    <summary><h2>About</h2></summary>
+                    <div class=info-grid>
+                        <div class=info-label>Source file</div>
+                        <div class=info-value><code>{{ main_xml_path.name }}</code></div>
+                        <div class=info-label>Generated on</div>
+                        <div class=info-value>{{ generated_at.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+                        {% if imported_files %}
+                        <div class=info-label>Imported files</div>
+                        <div class=info-value>
+                            {{ imported_files|length }} files:
+                            {{ imported_files|join(", ") }}
+                        </div>
+                        {% endif %}
+                        <div class=info-label>Schema stats</div>
+                        <div class=info-value>
+                            {{ doc|xpath("xsd:element[@name]")|length }} elements,
+                            {{ doc|xpath("//xsd:complexType[@name]")|length }} complex types,
+                            {{ doc|xpath("//xsd:simpleType[@name]")|length }} simple types,
+                            {{ doc|xpath("//xsd:group[@name]")|length }} groups
+                        </div>
+                        <div class=info-label>Generator</div>
+                        <div class=info-value>xsd-browser v{{ version }}</div>
+                    </div>
+                </details>
+            </section>
+
+            <footer class=landing-footer>
+                <span>Built with <a href="https://github.com/tamtamresearch/xsd-browser">xsd-browser</a> v{{ version }}</span>
+                <a href="https://www.tamtamresearch.com/">TamTam Research s.r.o.</a>
+            </footer>
+
         </div>
     </template>
 
