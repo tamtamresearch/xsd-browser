@@ -268,45 +268,8 @@ def _prefix_root_elements(elements, add_prefix):
                     el.attrib[attr] = add_prefix + val
 
 
-def main():
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Generate HTML documentation from XSD")
-    parser.add_argument("input", help="Input XSD file")
-    parser.add_argument(
-        "output",
-        nargs="?",
-        default=None,
-        help="Output HTML file. If omitted or set to '-', the result is written to stdout.",
-    )
-    parser.add_argument(
-        "--no-minify", action="store_true", help="Skip HTML minification"
-    )
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-    input_path = Path(args.input).absolute()
-
-    logger.info("Starting documentation generation")
-    logger.info(f"Input XSD: {input_path}")
-    if args.output is not None and args.output != "-":
-        logger.info(f"Output HTML: {Path(args.output).absolute()}")
-    else:
-        logger.info("Output HTML: stdout")
-
-    if not input_path.exists():
-        logger.error(f"File {input_path} does not exist")
-        sys.exit(1)
-
-    if args.output is not None and args.output != "-":
-        output_path = Path(args.output).absolute()
-        if not output_path.parent.is_dir():
-            logger.error(f"Output directory does not exist: {output_path.parent}")
-            sys.exit(1)
-    else:
-        output_path = None
-
+def render_html(input_path: Path, *, minify: bool = True) -> str:
+    """Parse an XSD file and render it to HTML. Returns the HTML string."""
     main_doc = parse_xml(input_path)
 
     logger.info("Processing imports...")
@@ -367,9 +330,53 @@ def main():
 
     output = re.sub(r'\n\s*\n', '\n\n', output)
 
-    if not args.no_minify:
+    if minify:
         logger.info("Minifying HTML...")
         output = minify_html.minify(output, minify_js=True, minify_css=True)
+
+    return output
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate HTML documentation from XSD")
+    parser.add_argument("input", help="Input XSD file")
+    parser.add_argument(
+        "output",
+        nargs="?",
+        default=None,
+        help="Output HTML file. If omitted or set to '-', the result is written to stdout.",
+    )
+    parser.add_argument(
+        "--no-minify", action="store_true", help="Skip HTML minification"
+    )
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+    input_path = Path(args.input).absolute()
+
+    logger.info("Starting documentation generation")
+    logger.info(f"Input XSD: {input_path}")
+    if args.output is not None and args.output != "-":
+        logger.info(f"Output HTML: {Path(args.output).absolute()}")
+    else:
+        logger.info("Output HTML: stdout")
+
+    if not input_path.exists():
+        logger.error(f"File {input_path} does not exist")
+        sys.exit(1)
+
+    if args.output is not None and args.output != "-":
+        output_path = Path(args.output).absolute()
+        if not output_path.parent.is_dir():
+            logger.error(f"Output directory does not exist: {output_path.parent}")
+            sys.exit(1)
+    else:
+        output_path = None
+
+    output = render_html(input_path, minify=not args.no_minify)
 
     if output_path is None:
         logger.info("Writing to stdout...")
