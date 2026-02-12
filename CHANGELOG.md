@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- **"Extended by" section not collapsible** — Changed from non-functional `div`+`summary` to `details`+`summary` and matched "Used by" styling.
+
 ## [0.2.0] - 2026-02-11
 
 ### Added
