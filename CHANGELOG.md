@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - **"Extended by" section not collapsible** — Changed from non-functional `div`+`summary` to `details`+`summary` and matched "Used by" styling.
 - **Independent state persistence for "Extended by"** — "Extended by" now has its own CSS class and localStorage key, so its open/close state persists independently from "Used by".
+- **Incomplete inheritance hierarchy for multi-level chains** — For types with multi-level inheritance (e.g. TypeC extends TypeB extends TypeA), only the direct parent's elements were shown. Now the full chain is walked recursively, with a separate labeled "Inherited from X:" section for each ancestor (oldest first). Indirect ancestors no longer leak into "Used by" sections.
 
 ### Fixed
 

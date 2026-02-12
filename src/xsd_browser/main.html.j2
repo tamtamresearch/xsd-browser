@@ -191,15 +191,33 @@
     
     {% macro inherited_elements(base, on) %}
         {% for base_ct in doc|xpath('//xsd:complexType[@name="{}"]'.format(base)) %}
-            {# Elements from the base type's own extension/restriction (its own new elements) #}
+            {# Recurse into grandparent first (oldest ancestor appears first).
+               Pass empty on="" so indirect ancestors don't record spurious usages. #}
             {% for ext_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
-                {{ child_elements(ext_el, on) }}
+                {{ inherited_elements(ext_el.attrib.base, "") }}
             {% endfor %}
             {% for rest_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
-                {{ child_elements(rest_el, on) }}
+                {{ inherited_elements(rest_el.attrib.base, "") }}
             {% endfor %}
-            {# Direct child elements of the base type (no complexContent) #}
-            {{ child_elements(base_ct, on) }}
+
+            {# Collect this ancestor's own elements #}
+            {% set own_content %}
+                {% for ext_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                    {{ child_elements(ext_el, on) }}
+                {% endfor %}
+                {% for rest_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
+                    {{ child_elements(rest_el, on) }}
+                {% endfor %}
+                {{ child_elements(base_ct, on) }}
+            {% endset %}
+            {% if own_content|trim %}
+                <div class="inherited-section">
+                    <div class=note>Inherited from {{ type_link(base, on) }}:</div>
+                    <div class="extension-content inherited">
+                        {{ own_content }}
+                    </div>
+                </div>
+            {% endif %}
         {% endfor %}
     {% endmacro %}
 
@@ -235,15 +253,7 @@
             {# 2) Zděděné elementy #}
             {% for ext_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
                 {% call el_div("extension", ext_el) %}
-                    {% set inherited_content %}{{ inherited_elements(ext_el.attrib.base, on) }}{% endset %}
-                    {% if inherited_content|trim %}
-                        <div class="inherited-section">
-                            <div class=note>Inherited from {{ type_link(ext_el.attrib.base, on) }}:</div>
-                            <div class="extension-content inherited">
-                                {{ inherited_content }}
-                            </div>
-                        </div>
-                    {% endif %}
+                    {{ inherited_elements(ext_el.attrib.base, on) }}
 
                     {% set new_content %}{{ child_elements(ext_el, on) }}{% endset %}
                     {% if new_content|trim %}
@@ -260,15 +270,7 @@
             {# 3) Restriction #}
             {% for rest_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
                 {% call el_div("restriction", rest_el) %}
-                    {% set inherited_content %}{{ inherited_elements(rest_el.attrib.base, on) }}{% endset %}
-                    {% if inherited_content|trim %}
-                        <div class="inherited-section">
-                            <div class=note>Inherited from {{ type_link(rest_el.attrib.base, on) }}:</div>
-                            <div class="restriction-content inherited">
-                                {{ inherited_content }}
-                            </div>
-                        </div>
-                    {% endif %}
+                    {{ inherited_elements(rest_el.attrib.base, on) }}
 
                     {% set allowed_content %}{{ child_elements(rest_el, on) }}{% endset %}
                     {% if allowed_content|trim %}
