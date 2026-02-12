@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Demonstration of inherited element scenarios for xsd-browser.
+
+    This schema covers three structural patterns for how a complexType can
+    define its child elements, and shows how each pattern affects the
+    "Inherited from ..." display when another type extends or restricts it.
+
+    ===================================================================
+    CASE 1 — Direct children (previously working)
+    ===================================================================
+    A complexType that declares its elements as direct children (without
+    complexContent). The old inherited_elements macro handled this case
+    correctly because it only called child_elements(base_ct, on).
+
+        AnimalBase
+          └─ xs:sequence
+               ├─ name
+               └─ species
+
+        Dog extends AnimalBase (adds breed)
+          → inherited: name, species  ← worked before the fix
+
+    ===================================================================
+    CASE 2 — complexContent/extension (the bug from issue #6)
+    ===================================================================
+    A complexType that uses complexContent/extension to extend another
+    type AND introduces its own new elements inside the extension. The
+    old macro missed these because it only looked at direct children of
+    the complexType node, not inside the extension element.
+
+        VehicleBase  (direct children: vin, manufacturer)
+        Car extends VehicleBase
+          └─ complexContent/extension base="VehicleBase"
+               └─ xs:sequence
+                    ├─ numberOfDoors      ← Car's OWN new elements,
+                    └─ trunkCapacityLitre    nested under extension
+
+        ElectricCar extends Car (adds batteryCapacityKWh)
+          → inherited from Car should show: numberOfDoors, trunkCapacityLitre
+          → inherited from VehicleBase (via Car's base) should show: vin, manufacturer
+          BUG: before the fix, numberOfDoors and trunkCapacityLitre were MISSING
+               because inherited_elements only did child_elements(base_ct)
+               on the <complexType name="Car"> node, which has no direct
+               xs:sequence — its elements are inside complexContent/extension.
+
+    ===================================================================
+    CASE 3 — complexContent/restriction (the restriction variant)
+    ===================================================================
+    A complexType that uses complexContent/restriction to restrict another
+    type. A restriction must redeclare the elements it retains (with the
+    same or tighter constraints). These redeclared elements live under
+    the restriction node, not as direct children of the complexType.
+
+        LocationBase (direct children: latitude, longitude, altitude, description)
+        PreciseLocation restricts LocationBase
+          └─ complexContent/restriction base="LocationBase"
+               └─ xs:sequence
+                    ├─ latitude     (kept, unchanged)
+                    ├─ longitude    (kept, unchanged)
+                    └─ altitude     (kept, but made required: minOccurs="1")
+                    (description is dropped — not redeclared)
+
+        GeoFence extends PreciseLocation (adds radiusMetres)
+          → inherited from PreciseLocation should show: latitude, longitude, altitude
+          BUG: same root cause — inherited_elements only looked at direct
+               children of <complexType name="PreciseLocation">, which has
+               none; the elements are inside complexContent/restriction.
+
+    ===================================================================
+    CASE 4 — Multi-level chain mixing all three patterns
+    ===================================================================
+    To be thorough, this tests a three-level chain where each level uses
+    a different structural pattern:
+
+        SensorBase                       (direct children: sensorId, installDate)
+        TemperatureSensor extends SensorBase via complexContent/extension
+          └─ adds: unit, precision       (nested under extension)
+        CalibratedTempSensor restricts TemperatureSensor via complexContent/restriction
+          └─ redeclares: unit (fixed to "celsius"), precision (made required)
+
+        HighAccuracySensor extends CalibratedTempSensor (adds calibrationCertificate)
+          → inherited from CalibratedTempSensor: unit, precision (from restriction)
+          → inherited from TemperatureSensor (via CalibratedTempSensor's base):
+              unit, precision (from extension) — and transitively sensorId, installDate
+
+    ===================================================================
+    CASE 5 — simpleContent/extension
+    ===================================================================
+    A type using simpleContent/extension to add attributes to a simple
+    value. This doesn't have child elements but confirms the XPath
+    "(xsd:simpleContent|xsd:complexContent)/xsd:extension" is needed.
+
+        MeasurementValue extends xs:decimal via simpleContent/extension
+          └─ adds attribute: unitOfMeasure
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/inherited-elements-demo"
+           xmlns:tns="http://example.com/inherited-elements-demo"
+           elementFormDefault="qualified">
+
+    <!-- ===========================================================
+         CASE 1: Direct children (previously working)
+         =========================================================== -->
+
+    <xs:complexType name="AnimalBase">
+        <xs:annotation>
+            <xs:documentation>
+                Base type using the simplest pattern: elements are direct
+                children of the complexType (no complexContent wrapper).
+                This pattern was always handled correctly by inherited_elements.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="name" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>Common name of the animal.</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="species" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>Taxonomic species name (e.g. "Canis lupus familiaris").</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="Dog">
+        <xs:annotation>
+            <xs:documentation>
+                Extends AnimalBase using complexContent/extension.
+                Inherits: name, species (direct children of AnimalBase).
+                Adds: breed.
+                This worked before the fix because AnimalBase's elements
+                are direct children — child_elements(base_ct) finds them.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="tns:AnimalBase">
+                <xs:sequence>
+                    <xs:element name="breed" type="xs:string"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="ServiceDog">
+        <xs:annotation>
+            <xs:documentation>
+                Extends Dog. Inherits: breed (from Dog's extension), plus
+                name, species (transitively from AnimalBase).
+                Adds: certificationId, handler.
+                This is the scenario that was BROKEN before the fix: Dog's
+                own element (breed) is inside complexContent/extension, not
+                a direct child of Dog's complexType.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="tns:Dog">
+                <xs:sequence>
+                    <xs:element name="certificationId" type="xs:string"/>
+                    <xs:element name="handler" type="xs:string"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+
+    <!-- ===========================================================
+         CASE 2: complexContent/extension (issue #6 scenario)
+         =========================================================== -->
+
+    <xs:complexType name="VehicleBase">
+        <xs:annotation>
+            <xs:documentation>
+                Base vehicle type with direct child elements.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="vin" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>Vehicle Identification Number.</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="manufacturer" type="xs:string"/>
+            <xs:element name="yearOfManufacture" type="xs:gYear"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="Car">
+        <xs:annotation>
+            <xs:documentation>
+                Extends VehicleBase. Its OWN elements (numberOfDoors, etc.)
+                live inside complexContent/extension/sequence.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="tns:VehicleBase">
+                <xs:sequence>
+                    <xs:element name="numberOfDoors" type="xs:positiveInteger"/>
+                    <xs:element name="trunkCapacityLitre" type="xs:decimal" minOccurs="0"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="ElectricCar">
+        <xs:annotation>
+            <xs:documentation>
+                Extends Car. Should inherit:
+                  - from Car (extension): numberOfDoors, trunkCapacityLitre
+                  - from VehicleBase (transitive): vin, manufacturer, yearOfManufacture
+                Before the fix, numberOfDoors and trunkCapacityLitre were
+                MISSING from the "Inherited from Car" section.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="tns:Car">
+                <xs:sequence>
+                    <xs:element name="batteryCapacityKWh" type="xs:decimal"/>
+                    <xs:element name="rangeKm" type="xs:positiveInteger"/>
+                    <xs:element name="chargingStandard" type="xs:string" minOccurs="0"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+
+    <!-- ===========================================================
+         CASE 3: complexContent/restriction
+         =========================================================== -->
+
+    <xs:complexType name="LocationBase">
+        <xs:annotation>
+            <xs:documentation>
+                A location with optional fields. Used as a base for
+                demonstrating restriction.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="latitude" type="xs:decimal"/>
+            <xs:element name="longitude" type="xs:decimal"/>
+            <xs:element name="altitude" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="description" type="xs:string" minOccurs="0"/>
+            <xs:element name="accuracy" type="xs:decimal" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="PreciseLocation">
+        <xs:annotation>
+            <xs:documentation>
+                Restricts LocationBase: drops 'description' and 'accuracy',
+                makes 'altitude' required. The redeclared elements live inside
+                complexContent/restriction/sequence — NOT as direct children
+                of the complexType node.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="tns:LocationBase">
+                <xs:sequence>
+                    <xs:element name="latitude" type="xs:decimal"/>
+                    <xs:element name="longitude" type="xs:decimal"/>
+                    <xs:element name="altitude" type="xs:decimal" minOccurs="1"/>
+                    <!-- description and accuracy intentionally omitted (restricted away) -->
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="GeoFence">
+        <xs:annotation>
+            <xs:documentation>
+                Extends PreciseLocation. Should inherit:
+                  - from PreciseLocation (restriction): latitude, longitude, altitude
+                Before the fix, these were MISSING because PreciseLocation's
+                elements are inside complexContent/restriction, not direct
+                children of the complexType.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="tns:PreciseLocation">
+                <xs:sequence>
+                    <xs:element name="radiusMetres" type="xs:decimal"/>
+                    <xs:element name="fenceName" type="xs:string" minOccurs="0"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="MonitoredGeoFence">
+        <xs:annotation>
+            <xs:documentation>
+                Extends GeoFence. Tests two-level inheritance where the
+                chain crosses both restriction and extension:
+                  LocationBase → (restricted by) PreciseLocation → (extended by) GeoFence → this
+                Should inherit:
+                  - from GeoFence (extension): radiusMetres, fenceName
+                  - from PreciseLocation (restriction, transitive): latitude, longitude, altitude
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="tns:GeoFence">
+                <xs:sequence>
+                    <xs:element name="monitoringInterval" type="xs:duration"/>
+                    <xs:element name="alertEndpoint" type="xs:anyURI"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+
+    <!-- ===========================================================
+         CASE 4: Multi-level chain mixing all three patterns
+         =========================================================== -->
+
+    <xs:complexType name="SensorBase">
+        <xs:annotation>
+            <xs:documentation>
+                Level 0 — direct children pattern (always worked).
+            </xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="sensorId" type="xs:string"/>
+            <xs:element name="installDate" type="xs:date" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="TemperatureSensor">
+        <xs:annotation>
+            <xs:documentation>
+                Level 1 — extends SensorBase via complexContent/extension.
+                Own elements (unit, precision, minTemp, maxTemp) are inside
+                the extension node.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="tns:SensorBase">
+                <xs:sequence>
+                    <xs:element name="unit" type="xs:string"/>
+                    <xs:element name="precision" type="xs:decimal"/>
+                    <xs:element name="minTemp" type="xs:decimal" minOccurs="0"/>
+                    <xs:element name="maxTemp" type="xs:decimal" minOccurs="0"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="CalibratedTempSensor">
+        <xs:annotation>
+            <xs:documentation>
+                Level 2 — restricts TemperatureSensor via complexContent/restriction.
+                Keeps sensorId, installDate (from SensorBase), unit and precision
+                (from TemperatureSensor), drops minTemp and maxTemp, makes
+                precision required.
+                All elements are inside the restriction node.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:restriction base="tns:TemperatureSensor">
+                <xs:sequence>
+                    <xs:element name="sensorId" type="xs:string"/>
+                    <xs:element name="installDate" type="xs:date" minOccurs="1"/>
+                    <xs:element name="unit" type="xs:string"/>
+                    <xs:element name="precision" type="xs:decimal" minOccurs="1"/>
+                    <!-- minTemp and maxTemp intentionally omitted (restricted away) -->
+                </xs:sequence>
+            </xs:restriction>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="HighAccuracySensor">
+        <xs:annotation>
+            <xs:documentation>
+                Level 3 — extends CalibratedTempSensor.
+                Should inherit from CalibratedTempSensor (restriction):
+                  sensorId, installDate, unit, precision
+                Adds: calibrationCertificate, lastCalibrationDate.
+                Without the fix, ALL inherited elements from CalibratedTempSensor
+                would be missing (they're inside a restriction node).
+            </xs:documentation>
+        </xs:annotation>
+        <xs:complexContent>
+            <xs:extension base="tns:CalibratedTempSensor">
+                <xs:sequence>
+                    <xs:element name="calibrationCertificate" type="xs:string"/>
+                    <xs:element name="lastCalibrationDate" type="xs:date"/>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+
+    <!-- ===========================================================
+         CASE 5: simpleContent/extension (attribute-only inheritance)
+         =========================================================== -->
+
+    <xs:complexType name="MeasurementValue">
+        <xs:annotation>
+            <xs:documentation>
+                A decimal value with a unit attribute, defined via
+                simpleContent/extension. Tests that the XPath
+                "(xsd:simpleContent|xsd:complexContent)/xsd:extension"
+                covers simpleContent too. No child elements here, but
+                the attribute should be inherited.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:simpleContent>
+            <xs:extension base="xs:decimal">
+                <xs:attribute name="unitOfMeasure" type="xs:string" use="required"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:complexType name="TimestampedMeasurement">
+        <xs:annotation>
+            <xs:documentation>
+                Extends MeasurementValue via simpleContent/extension.
+                Should inherit attribute: unitOfMeasure.
+                Adds attribute: timestamp.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:simpleContent>
+            <xs:extension base="tns:MeasurementValue">
+                <xs:attribute name="timestamp" type="xs:dateTime" use="required"/>
+                <xs:attribute name="quality" type="xs:string" use="optional"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+
+    <!-- ===========================================================
+         Root elements (so the schema is usable and each type is
+         reachable from a global element for testing)
+         =========================================================== -->
+
+    <!-- Case 1 -->
+    <xs:element name="Animal" type="tns:AnimalBase"/>
+    <xs:element name="Dog" type="tns:Dog"/>
+    <xs:element name="ServiceDog" type="tns:ServiceDog"/>
+
+    <!-- Case 2 -->
+    <xs:element name="Vehicle" type="tns:VehicleBase"/>
+    <xs:element name="Car" type="tns:Car"/>
+    <xs:element name="ElectricCar" type="tns:ElectricCar"/>
+
+    <!-- Case 3 -->
+    <xs:element name="Location" type="tns:LocationBase"/>
+    <xs:element name="PreciseLocation" type="tns:PreciseLocation"/>
+    <xs:element name="GeoFence" type="tns:GeoFence"/>
+    <xs:element name="MonitoredGeoFence" type="tns:MonitoredGeoFence"/>
+
+    <!-- Case 4 -->
+    <xs:element name="Sensor" type="tns:SensorBase"/>
+    <xs:element name="TemperatureSensor" type="tns:TemperatureSensor"/>
+    <xs:element name="CalibratedTempSensor" type="tns:CalibratedTempSensor"/>
+    <xs:element name="HighAccuracySensor" type="tns:HighAccuracySensor"/>
+
+    <!-- Case 5 -->
+    <xs:element name="Measurement" type="tns:MeasurementValue"/>
+    <xs:element name="TimestampedMeasurement" type="tns:TimestampedMeasurement"/>
+
+</xs:schema>
