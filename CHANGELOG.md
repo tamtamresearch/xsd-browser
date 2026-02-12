@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 
 - **"Extended by" section not collapsible** — Changed from non-functional `div`+`summary` to `details`+`summary` and matched "Used by" styling.
+- **Independent state persistence for "Extended by"** — "Extended by" now has its own CSS class and localStorage key, so its open/close state persists independently from "Used by".
 
 ### Fixed
 

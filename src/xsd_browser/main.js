@@ -303,13 +303,21 @@ function getDetailsStorageKey() {
     return 'xbe-details-' + document.title;
 }
 
-function getGlobalUsagesOpen() {
-    return localStorage.getItem('xbe-usages-' + document.title) === 'true';
+const globalToggleables = {
+    'details.usages-box': 'xbe-usages-',
+    'details.extended-by-box': 'xbe-extended-',
+};
+
+function getGlobalToggleOpen(selector) {
+    const key = globalToggleables[selector];
+    return key && localStorage.getItem(key + document.title) === 'true';
 }
 
-function setGlobalUsagesOpen(open) {
+function setGlobalToggleOpen(selector, open) {
+    const key = globalToggleables[selector];
+    if (!key) return;
     try {
-        localStorage.setItem('xbe-usages-' + document.title, open ? 'true' : 'false');
+        localStorage.setItem(key + document.title, open ? 'true' : 'false');
     } catch(e) {}
 }
 
@@ -368,9 +376,11 @@ function restoreDetailsState() {
     const hashState = state[currentHash];
     restoringState = true;
     try {
-        if (getGlobalUsagesOpen()) {
-            const usagesBox = document.querySelector('main details.usages-box');
-            if (usagesBox) usagesBox.open = true;
+        for (const selector of Object.keys(globalToggleables)) {
+            if (getGlobalToggleOpen(selector)) {
+                const el = document.querySelector('main ' + selector);
+                if (el) el.open = true;
+            }
         }
         if (hashState && hashState.openElements && hashState.openElements.length > 0) {
             const openSet = new Set(hashState.openElements);
@@ -427,8 +437,10 @@ window.addEventListener("DOMContentLoaded", showFromHash);
 document.addEventListener('toggle', function(e) {
     if (restoringState) return;
     if (!e.target.closest('main')) return;
-    if (e.target.matches('details.usages-box')) {
-        setGlobalUsagesOpen(e.target.open);
+    for (const selector of Object.keys(globalToggleables)) {
+        if (e.target.matches(selector)) {
+            setGlobalToggleOpen(selector, e.target.open);
+        }
     }
     saveDetailsState();
 }, true);

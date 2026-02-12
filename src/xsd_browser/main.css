@@ -295,7 +295,7 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
 }
 
 /* === Usages box === */
-.usages-box {
+.usages-box, .extended-by-box {
     display: block;
     margin: 6px 8px 12px;
     padding: 7px 7px;
@@ -307,36 +307,37 @@ a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
     background-color: #fff;
 }
 
-.usages-box > summary {
+.usages-box > summary, .extended-by-box > summary {
     display: flex;
     list-style: none;
     cursor: pointer;
     align-items: center;
 }
-.usages-box > summary::-webkit-details-marker {
+.usages-box > summary::-webkit-details-marker,
+.extended-by-box > summary::-webkit-details-marker {
     display: none;
 }
-.usages-box > summary::marker {
+.usages-box > summary::marker, .extended-by-box > summary::marker {
     content: "";
 }
-.usages-box > summary:hover {
+.usages-box > summary:hover, .extended-by-box > summary:hover {
     color: #1f2937;
 }
-.usages-box > summary::before {
+.usages-box > summary::before, .extended-by-box > summary::before {
     content: "\25B8";
     font-size: 16px;
     width: 18px;
     color: #6b7280;
 }
-.usages-box[open] > summary::before {
+.usages-box[open] > summary::before, .extended-by-box[open] > summary::before {
     content: "\25BE";
 }
-.usages-box .usages {
+.usages-box .usages, .extended-by-box .usages {
     list-style: none;
     padding-left: 16px;
     margin: 4px 0 0;
 }
-.usages-box:not(:has(.usages li)) {
+.usages-box:not(:has(.usages li)), .extended-by-box:not(:has(.usages li)) {
     display: none;
 }
 .usages a {

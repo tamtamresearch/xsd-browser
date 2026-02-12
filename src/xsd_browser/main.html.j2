@@ -212,7 +212,7 @@
         {% set derived = derived|rejectattr("attrib.name", "equalto", type_name)|list %}
 
         {% if derived %}
-            <details class="usages-box">
+            <details class="extended-by-box">
                 <summary>Extended by:</summary>
                 <ul class="usages">
                     {% for ct in derived %}
