@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:a="http://example.com/a"
+           xmlns:b="http://example.com/b"
+           targetNamespace="http://example.com/main"
+           elementFormDefault="qualified">
+
+    <xs:import namespace="http://example.com/a" schemaLocation="child_a.xsd"/>
+    <xs:import namespace="http://example.com/b" schemaLocation="child_b.xsd"/>
+
+    <xs:complexType name="MainType">
+        <xs:sequence>
+            <xs:element name="mainField" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:element name="Root" type="xs:string"/>
+
+</xs:schema>

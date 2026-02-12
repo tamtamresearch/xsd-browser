@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:b="http://example.com/b"
+           xmlns:a="http://example.com/a"
+           xmlns:c="http://example.com/c"
+           targetNamespace="http://example.com/b"
+           elementFormDefault="qualified">
+
+    <xs:import namespace="http://example.com/c" schemaLocation="child_c.xsd"/>
+
+    <xs:complexType name="TypeB">
+        <xs:sequence>
+            <xs:element name="fieldB" type="xs:string"/>
+            <xs:element name="refToA" type="a:TypeA" minOccurs="0"/>
+            <xs:element name="refToC" type="c:TypeC" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>

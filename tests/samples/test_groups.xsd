@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="qualified">
+
+    <!-- Named group with sequence -->
+    <xs:group name="AddressGroup">
+        <xs:sequence>
+            <xs:element name="street" type="xs:string"/>
+            <xs:element name="city" type="xs:string"/>
+            <xs:element name="zip" type="xs:string"/>
+        </xs:sequence>
+    </xs:group>
+
+    <!-- Type referencing the group -->
+    <xs:complexType name="PersonType">
+        <xs:sequence>
+            <xs:element name="name" type="xs:string"/>
+            <xs:group ref="AddressGroup"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Type with group ref alongside own elements -->
+    <xs:complexType name="NestedGroupType">
+        <xs:sequence>
+            <xs:element name="companyName" type="xs:string"/>
+            <xs:group ref="AddressGroup"/>
+            <xs:element name="phone" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Root elements -->
+    <xs:element name="Person" type="PersonType"/>
+    <xs:element name="Company" type="NestedGroupType"/>
+
+</xs:schema>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:a="http://example.com/a"
+           targetNamespace="http://example.com/a"
+           elementFormDefault="qualified">
+
+    <xs:complexType name="TypeA">
+        <xs:sequence>
+            <xs:element name="fieldA" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:element name="ElementA" type="a:TypeA"/>
+
+</xs:schema>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="qualified">
+
+    <!-- Attribute group with required and optional attributes -->
+    <xs:attributeGroup name="CommonAttrs">
+        <xs:attribute name="id" type="xs:string" use="required"/>
+        <xs:attribute name="lang" type="xs:string"/>
+    </xs:attributeGroup>
+
+    <!-- Complex type using attribute group ref + own attribute -->
+    <xs:complexType name="StyledElement">
+        <xs:sequence>
+            <xs:element name="content" type="xs:string"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="CommonAttrs"/>
+        <xs:attribute name="style" type="xs:string"/>
+    </xs:complexType>
+
+    <!-- Complex type with fixed-value attribute -->
+    <xs:complexType name="FixedAttr">
+        <xs:sequence>
+            <xs:element name="value" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="version" type="xs:string" fixed="1.0"/>
+    </xs:complexType>
+
+    <!-- Root elements -->
+    <xs:element name="Styled" type="StyledElement"/>
+    <xs:element name="Fixed" type="FixedAttr"/>
+
+</xs:schema>

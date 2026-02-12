@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="qualified">
+
+    <!-- Complex type with sequence and various occurs -->
+    <xs:complexType name="OrderType">
+        <xs:sequence>
+            <xs:element name="orderId" type="xs:string"/>
+            <xs:element name="customer" type="xs:string"/>
+            <xs:element name="note" type="xs:string" minOccurs="0"/>
+            <xs:element name="item" type="xs:string" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Complex type with choice -->
+    <xs:complexType name="PaymentChoice">
+        <xs:choice>
+            <xs:element name="CreditCard" type="xs:string"/>
+            <xs:element name="BankTransfer" type="xs:string"/>
+            <xs:element name="Cash" type="xs:string"/>
+        </xs:choice>
+    </xs:complexType>
+
+    <!-- Nested: sequence containing a choice -->
+    <xs:complexType name="NestedStructure">
+        <xs:sequence>
+            <xs:element name="header" type="xs:string"/>
+            <xs:choice>
+                <xs:element name="optionA" type="xs:string"/>
+                <xs:element name="optionB" type="xs:string"/>
+            </xs:choice>
+            <xs:element name="footer" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Abstract element with substitution group -->
+    <xs:element name="AbstractShape" type="xs:anyType" abstract="true"/>
+
+    <xs:element name="Circle" substitutionGroup="AbstractShape">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="radius" type="xs:decimal"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="Rectangle" substitutionGroup="AbstractShape">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="width" type="xs:decimal"/>
+                <xs:element name="height" type="xs:decimal"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Element with annotation -->
+    <xs:element name="AnnotatedElement" type="xs:string">
+        <xs:annotation>
+            <xs:documentation>This element has important documentation.</xs:documentation>
+        </xs:annotation>
+    </xs:element>
+
+    <!-- Root elements -->
+    <xs:element name="Order" type="OrderType"/>
+    <xs:element name="Payment" type="PaymentChoice"/>
+    <xs:element name="Nested" type="NestedStructure"/>
+
+</xs:schema>

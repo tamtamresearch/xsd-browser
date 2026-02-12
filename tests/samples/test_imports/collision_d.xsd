@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:shared="http://example.com/d"
+           targetNamespace="http://example.com/d"
+           elementFormDefault="qualified">
+
+    <xs:complexType name="TypeD">
+        <xs:sequence>
+            <xs:element name="fieldD" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>

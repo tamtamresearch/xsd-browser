@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:shared="http://example.com/d"
+           targetNamespace="http://example.com/collision"
+           elementFormDefault="qualified">
+
+    <xs:import namespace="http://example.com/d" schemaLocation="collision_d.xsd"/>
+    <xs:import namespace="http://example.com/e" schemaLocation="collision_e.xsd"/>
+
+    <xs:element name="Root" type="xs:string"/>
+
+</xs:schema>
