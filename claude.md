@@ -26,7 +26,7 @@ xsd-browser <input.xsd> <output.html>
 
 Example:
 ```bash
-xsd-browser samples\DATEXII_3_Profile\DATEXII_3_D2Payload.xsd output\x.html
+xsd-browser samples/DATEXII_3_Profile/DATEXII_3_D2Payload.xsd output/x.html
 ```
 
 ## Dependencies
