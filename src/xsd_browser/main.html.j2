@@ -249,7 +249,9 @@
                     {% if new_content|trim %}
                         <div class="new-elements-section">
                             <div class=note>New elements:</div>
-                            {{ new_content }}
+                            <div class="extension-content">
+                                {{ new_content }}
+                            </div>
                         </div>
                     {% endif %}
                 {% endcall %}
@@ -272,7 +274,9 @@
                     {% if allowed_content|trim %}
                         <div class="allowed-elements-section">
                             <div class=note>Allowed elements:</div>
-                            {{ allowed_content }}
+                            <div class="restriction-content">
+                                {{ allowed_content }}
+                            </div>
                         </div>
                     {% endif %}
                 {% endcall %}
