@@ -37,3 +37,8 @@ build-backend = "uv_build"
 line-length = 100
 target-version = "py310"
 lint.select = ["E", "F", "B", "I", "ASYNC"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
