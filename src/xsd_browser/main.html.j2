@@ -191,6 +191,14 @@
     
     {% macro inherited_elements(base, on) %}
         {% for base_ct in doc|xpath('//xsd:complexType[@name="{}"]'.format(base)) %}
+            {# Elements from the base type's own extension/restriction (its own new elements) #}
+            {% for ext_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                {{ child_elements(ext_el, on) }}
+            {% endfor %}
+            {% for rest_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
+                {{ child_elements(rest_el, on) }}
+            {% endfor %}
+            {# Direct child elements of the base type (no complexContent) #}
             {{ child_elements(base_ct, on) }}
         {% endfor %}
     {% endmacro %}

@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - **"Extended by" section not collapsible** — Changed from non-functional `div`+`summary` to `details`+`summary` and matched "Used by" styling.
 
+### Fixed
+
+- **Inherited elements missing for types using complexContent/extension** ([#6](https://github.com/TamTamResearch/xsd-browser/issues/6)) — Types extending a base that itself uses `<xs:complexContent><xs:extension>` (e.g. `HierarchyElementGeneral` extending `fac:Facility`) were missing the base type's own elements in the "Inherited from" section.
+
 ## [0.2.0] - 2026-02-11
 
 ### Added
