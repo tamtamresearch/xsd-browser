@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>XSD Browser - Wasm v0.29.3</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f0f2f5; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        #status { margin-top: 1rem; font-size: 0.85rem; color: #555; }
+        button { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; cursor: pointer; font-weight: bold; }
+        button:disabled { background: #bdc3c7; }
+        input[type="file"] { margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>XSD to HTML</h2>
+    <input type="file" id="zipInput" accept=".zip">
+    <button id="convertBtn" disabled>Preparing Python...</button>
+    <div id="status">Starting Pyodide...</div>
+</div>
+
+<script>
+    const status = document.getElementById('status');
+    const btn = document.getElementById('convertBtn');
+    let pyodide;
+
+    async function setup() {
+        try {
+            pyodide = await loadPyodide();
+            await pyodide.loadPackage(["lxml", "micropip"]);
+            const micropip = pyodide.pyimport("micropip");
+            await micropip.install(["jinja2", "html-minifier"]);
+
+            // Files to fetch from your server and mount into Python's VFS
+            const projectFiles = ['wasm.py', 'main.py', 'main.html.j2', 'main.css', 'main.js'];
+            
+            for (const file of projectFiles) {
+                status.innerText = `Fetching ${file}...`;
+                const content = await (await fetch(file)).text();
+                // writeFile makes the file visible to Python's open() and FileSystemLoader
+                pyodide.FS.writeFile(`/home/pyodide/${file}`, content);
+            }
+
+            // Prime the import
+            await pyodide.runPythonAsync("import wasm");
+
+            status.innerText = "Ready to process ZIP.";
+            btn.disabled = false;
+            btn.innerText = "Convert and Download";
+        } catch (e) {
+            status.innerText = "Init Failed: " + e.message;
+        }
+    }
+
+    btn.onclick = async () => {
+        const file = document.getElementById('zipInput').files[0];
+        if (!file) return;
+
+        btn.disabled = true;
+        status.innerText = "Processing schemas...";
+
+        const buffer = await file.arrayBuffer();
+        
+        try {
+            // In 0.29.3, passing a Uint8Array creates a JsProxy in Python
+            const zipProxy = new Uint8Array(buffer);
+            
+            // Call the Python function directly
+            const resultHtml = await pyodide.globals.get("wasm").process_data(zipProxy);
+
+            // Trigger the download
+            const blob = new Blob([resultHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "xsd_report.html";
+            a.click();
+            
+            status.innerText = "Success!";
+        } catch (err) {
+            status.innerText = "Processing Error. See console.";
+            console.error(err);
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
+    setup();
+</script>
+</body>
+</html>

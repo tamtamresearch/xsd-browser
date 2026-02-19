@@ -113,6 +113,68 @@ Generates a **self-contained HTML file** with embedded CSS and JavaScript. The t
 - All source lives in `src/xsd_browser/` -- main code in `main.py`, templates in `main.html.j2`, `main.js`, `main.css`
 - Can be run as `xsd-browser` (CLI entry point), or `python -m xsd_browser`
 
+## WASM Version
+
+An experimental browser-only version that runs the full Python pipeline in-browser via Pyodide. No server required after initial load.
+
+### Files
+
+```
+src/xsd_browser/
+  index.html   - UI: file picker, entry dropdown, convert button, status
+  worker.js    - Web Worker: loads Pyodide, installs deps, runs Python
+  wasm.py      - Thin shim: calls render_html() from main.py with minify=False
+```
+
+### How to Run
+
+Serve `src/xsd_browser/` over HTTP (required — `file://` won't work due to CORS):
+```bash
+python -m http.server --directory src/xsd_browser
+```
+Then open `http://localhost:8000`.
+
+### Architecture
+
+**`worker.js`** runs Pyodide v0.29.3 in a Web Worker (keeps UI responsive):
+1. Loads Pyodide runtime
+2. Installs `lxml` and `micropip` via `pyodide.loadPackage`
+3. Installs `jinja2` via `micropip`
+4. Fetches and writes project source files to VFS (`/home/pyodide/`): `wasm.py`, `main.py`, `main.html.j2`, `main.css`, `main.js`
+5. Imports `wasm` module, posts `ready`
+
+**`wasm.py`** is a thin shim — `process_data(entry_path_str)` calls `render_html()` from `main.py` with `minify=False` (minify-html is not available in Pyodide).
+
+**Worker message protocol** (JS → worker):
+- `{ type: 'convert', files, entryPoint }` — `files` is `{ path: Uint8Array | null }` dict (null = directory marker)
+
+Worker → JS messages: `status` (progress text), `ready`, `result` (`{ html, entryPoint }`), `error`.
+
+**`convert()` in worker.js:**
+1. Cleans `/home/pyodide/xsd_data` via `shutil.rmtree` + `os.makedirs`
+2. Writes all files from the dict to VFS (creates parent dirs as needed)
+3. Calls `pyodide.globals.get("wasm").process_data(entryPath)`
+
+### Input File Handling (all done in JS, in `index.html`)
+
+| Format | How extracted | JS dependency |
+|--------|--------------|---------------|
+| `.xsd` | Read as ArrayBuffer directly | none |
+| `.zip` | JSZip (CDN: cdnjs.cloudflare.com) | JSZip 3.10.1 |
+| `.tar`, `.tar.gz`, `.tgz` | Inline `extractTar()` function | none (uses built-in `DecompressionStream` for gzip) |
+
+All formats produce the same `files` dict sent to the worker's `convert` message — the worker has no format-specific code.
+
+**`extractTar(file)` logic:**
+- For `.tar.gz`/`.tgz`: pipes through `DecompressionStream('gzip')` first
+- Parses raw tar bytes: 512-byte blocks, reads name (bytes 0–99), size (bytes 124–135, octal), type flag (byte 156); typeFlag `'0'` or `'\0'` = file, anything else = directory
+
+### Key Constraints
+
+- `DecompressionStream` requires a modern browser (Chrome 80+, Firefox 113+)
+- Worker setup takes 30–60 seconds on first load (Pyodide + lxml download)
+- The file input is disabled until the worker posts `ready`
+
 ## Git Commits
 
 - Do NOT add `Co-Authored-By` signatures to commit messages

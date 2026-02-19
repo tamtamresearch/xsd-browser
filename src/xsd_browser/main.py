@@ -15,7 +15,8 @@ from pathlib import Path
 import jinja2
 import lxml.etree
 import lxml.objectify
-import minify_html
+# TODO
+# import minify_html
 
 logger = logging.getLogger("xsd_browser")
 
@@ -270,6 +271,10 @@ def _prefix_root_elements(elements, add_prefix):
 
 def render_html(input_path: Path, *, minify: bool = True) -> str:
     """Parse an XSD file and render it to HTML. Returns the HTML string."""
+
+    # TODO
+    return str(input_path)
+
     main_doc = parse_xml(input_path)
 
     logger.info("Processing imports...")
@@ -330,9 +335,10 @@ def render_html(input_path: Path, *, minify: bool = True) -> str:
 
     output = re.sub(r'\n\s*\n', '\n\n', output)
 
-    if minify:
-        logger.info("Minifying HTML...")
-        output = minify_html.minify(output, minify_js=True, minify_css=True)
+    # TODO
+    # if minify:
+    #     logger.info("Minifying HTML...")
+    #     output = minify_html.minify(output, minify_js=True, minify_css=True)
 
     return output
 
