@@ -8,13 +8,13 @@ Uses samples/inherited_elements_demo.xsd which covers:
   Case 5: simpleContent/extension (attribute-only)
 """
 
-import re
-
 import pytest
 from conftest import (
     SAMPLES_DIR,
     extract_element_names,
     get_template,
+    inner_html,
+    parse_html,
 )
 
 XSD_FILE = SAMPLES_DIR / "inherited_elements_demo.xsd"
@@ -25,53 +25,43 @@ NS = "tns:"
 
 
 @pytest.fixture(scope="module")
-def rendered_html():
-    """Generate HTML from the demo XSD and return it as a string."""
+def doc():
+    """Generate HTML from the demo XSD and return it as a parsed lxml document."""
     from xsd_browser.main import render_html
 
-    return render_html(XSD_FILE, minify=False)
+    html = render_html(XSD_FILE, minify=False)
+    return parse_html(html)
 
 
-def _get_inherited_section(html: str, type_name: str) -> str:
-    """Extract all 'Inherited from ...' section(s) for a given type."""
-    content = get_template(html, "type-contents", type_name)
-    parts = re.findall(
-        r'<div class="inherited-section">[\s\S]*?</div>\s*</div>\s*</div>',
-        content,
-    )
-    return "\n".join(parts)
-
-
-def _get_all_inherited_element_names(html: str, type_name: str) -> list[str]:
-    """Get all element names shown in inherited sections for a type."""
-    inherited = _get_inherited_section(html, type_name)
-    return extract_element_names(inherited)
-
-
-def _get_inherited_from(html: str, type_name: str, base_name: str) -> list[str]:
+def _get_inherited_from(doc, type_name: str, base_name: str) -> list[str]:
     """Get element names inherited from a specific base type."""
-    content = get_template(html, "type-contents", type_name)
-    pattern = (
-        rf'<div class="inherited-section">\s*'
-        rf"<div class=note>Inherited from[\s\S]*?"
-        rf"#type-{re.escape(base_name)}[\s\S]*?"
-        rf'<div class="extension-content inherited">([\s\S]*?)</div>\s*</div>'
-    )
-    m = re.search(pattern, content)
-    if not m:
-        return []
-    return extract_element_names(m.group(1))
+    tmpl = get_template(doc, "type-contents", type_name)
+    # Find the inherited-section div that links to the base type
+    sections = tmpl.xpath('.//div[@class="inherited-section"]')
+    for section in sections:
+        if section.xpath(f'.//a[contains(@href, "#type-{base_name}")]'):
+            return extract_element_names(section)
+    return []
 
 
-def _get_own_element_names(html: str, type_name: str) -> list[str]:
-    """Get element names defined directly by the type (in 'New elements' or top-level)."""
-    content = get_template(html, "type-contents", type_name)
-    without_inherited = re.sub(
-        r'<div class="inherited-section">[\s\S]*?</div>\s*</div>\s*</div>',
-        "",
-        content,
-    )
-    return extract_element_names(without_inherited)
+def _get_all_inherited_element_names(doc, type_name: str) -> list[str]:
+    """Get all element names shown in inherited sections for a type."""
+    tmpl = get_template(doc, "type-contents", type_name)
+    inherited_sections = tmpl.xpath('.//div[@class="inherited-section"]')
+    names = []
+    for section in inherited_sections:
+        names.extend(extract_element_names(section))
+    return names
+
+
+def _get_own_element_names(doc, type_name: str) -> list[str]:
+    """Get element names defined directly by the type (not inside inherited sections)."""
+    tmpl = get_template(doc, "type-contents", type_name)
+    # Elements NOT inside an inherited-section
+    all_refs = tmpl.xpath('.//xbe-collapsible-element-ref')
+    inherited_refs = tmpl.xpath('.//div[@class="inherited-section"]//xbe-collapsible-element-ref')
+    inherited_set = set(id(r) for r in inherited_refs)
+    return [r.get('element') for r in all_refs if id(r) not in inherited_set]
 
 
 # ===================================================================
@@ -82,32 +72,28 @@ def _get_own_element_names(html: str, type_name: str) -> list[str]:
 class TestCase1DirectChildren:
     """AnimalBase (direct) -> Dog (extension) -> ServiceDog (extension)."""
 
-    def test_dog_inherits_from_animal_base(self, rendered_html):
-        inherited = _get_all_inherited_element_names(rendered_html, NS + "Dog")
+    def test_dog_inherits_from_animal_base(self, doc):
+        inherited = _get_all_inherited_element_names(doc, NS + "Dog")
         assert "name" in inherited
         assert "species" in inherited
 
-    def test_dog_own_elements(self, rendered_html):
-        own = _get_own_element_names(rendered_html, NS + "Dog")
+    def test_dog_own_elements(self, doc):
+        own = _get_own_element_names(doc, NS + "Dog")
         assert "breed" in own
 
-    def test_service_dog_inherits_breed_from_dog(self, rendered_html):
+    def test_service_dog_inherits_breed_from_dog(self, doc):
         """This is the key test: breed lives inside Dog's extension node."""
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "ServiceDog",
-            NS + "Dog",
-        )
+        inherited = _get_inherited_from(doc, NS + "ServiceDog", NS + "Dog")
         assert "breed" in inherited
 
-    def test_service_dog_inherits_from_animal_base_transitively(self, rendered_html):
+    def test_service_dog_inherits_from_animal_base_transitively(self, doc):
         """Transitive: ServiceDog -> Dog -> AnimalBase. Dog's template shows AnimalBase's elements."""
-        inherited = _get_all_inherited_element_names(rendered_html, NS + "Dog")
+        inherited = _get_all_inherited_element_names(doc, NS + "Dog")
         assert "name" in inherited
         assert "species" in inherited
 
-    def test_service_dog_own_elements(self, rendered_html):
-        own = _get_own_element_names(rendered_html, NS + "ServiceDog")
+    def test_service_dog_own_elements(self, doc):
+        own = _get_own_element_names(doc, NS + "ServiceDog")
         assert "certificationId" in own
         assert "handler" in own
 
@@ -120,44 +106,32 @@ class TestCase1DirectChildren:
 class TestCase2ComplexContentExtension:
     """VehicleBase (direct) -> Car (extension) -> ElectricCar (extension)."""
 
-    def test_car_inherits_from_vehicle_base(self, rendered_html):
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "Car",
-            NS + "VehicleBase",
-        )
+    def test_car_inherits_from_vehicle_base(self, doc):
+        inherited = _get_inherited_from(doc, NS + "Car", NS + "VehicleBase")
         assert "vin" in inherited
         assert "manufacturer" in inherited
         assert "yearOfManufacture" in inherited
 
-    def test_car_own_elements(self, rendered_html):
-        own = _get_own_element_names(rendered_html, NS + "Car")
+    def test_car_own_elements(self, doc):
+        own = _get_own_element_names(doc, NS + "Car")
         assert "numberOfDoors" in own
         assert "trunkCapacityLitre" in own
 
-    def test_electric_car_inherits_from_car(self, rendered_html):
+    def test_electric_car_inherits_from_car(self, doc):
         """Core issue #6 test: Car's elements are inside complexContent/extension."""
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "ElectricCar",
-            NS + "Car",
-        )
+        inherited = _get_inherited_from(doc, NS + "ElectricCar", NS + "Car")
         assert "numberOfDoors" in inherited
         assert "trunkCapacityLitre" in inherited
 
-    def test_electric_car_inherits_from_vehicle_base_transitively(self, rendered_html):
+    def test_electric_car_inherits_from_vehicle_base_transitively(self, doc):
         """Transitive: ElectricCar -> Car -> VehicleBase. Car's template shows VehicleBase's elements."""
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "Car",
-            NS + "VehicleBase",
-        )
+        inherited = _get_inherited_from(doc, NS + "Car", NS + "VehicleBase")
         assert "vin" in inherited
         assert "manufacturer" in inherited
         assert "yearOfManufacture" in inherited
 
-    def test_electric_car_own_elements(self, rendered_html):
-        own = _get_own_element_names(rendered_html, NS + "ElectricCar")
+    def test_electric_car_own_elements(self, doc):
+        own = _get_own_element_names(doc, NS + "ElectricCar")
         assert "batteryCapacityKWh" in own
         assert "rangeKm" in own
         assert "chargingStandard" in own
@@ -171,68 +145,46 @@ class TestCase2ComplexContentExtension:
 class TestCase3ComplexContentRestriction:
     """LocationBase (direct) -> PreciseLocation (restriction) -> GeoFence -> MonitoredGeoFence."""
 
-    def test_precise_location_restricts_location_base(self, rendered_html):
+    def test_precise_location_restricts_location_base(self, doc):
         """PreciseLocation redeclares latitude, longitude, altitude but drops description, accuracy."""
-        content = get_template(
-            rendered_html,
-            "type-contents",
-            NS + "PreciseLocation",
-        )
+        tmpl = get_template(doc, "type-contents", NS + "PreciseLocation")
+        content = inner_html(tmpl)
         assert "latitude" in content
         assert "longitude" in content
         assert "altitude" in content
 
-    def test_geo_fence_inherits_from_precise_location(self, rendered_html):
+    def test_geo_fence_inherits_from_precise_location(self, doc):
         """GeoFence extends PreciseLocation; elements are inside restriction node."""
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "GeoFence",
-            NS + "PreciseLocation",
-        )
+        inherited = _get_inherited_from(doc, NS + "GeoFence", NS + "PreciseLocation")
         assert "latitude" in inherited
         assert "longitude" in inherited
         assert "altitude" in inherited
 
-    def test_geo_fence_does_not_inherit_dropped_elements(self, rendered_html):
+    def test_geo_fence_does_not_inherit_dropped_elements(self, doc):
         """description and accuracy were restricted away by PreciseLocation."""
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "GeoFence",
-            NS + "PreciseLocation",
-        )
+        inherited = _get_inherited_from(doc, NS + "GeoFence", NS + "PreciseLocation")
         assert "description" not in inherited
         assert "accuracy" not in inherited
 
-    def test_geo_fence_own_elements(self, rendered_html):
-        own = _get_own_element_names(rendered_html, NS + "GeoFence")
+    def test_geo_fence_own_elements(self, doc):
+        own = _get_own_element_names(doc, NS + "GeoFence")
         assert "radiusMetres" in own
 
-    def test_monitored_geo_fence_inherits_from_geo_fence(self, rendered_html):
+    def test_monitored_geo_fence_inherits_from_geo_fence(self, doc):
         """Two-level chain crossing restriction then extension."""
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "MonitoredGeoFence",
-            NS + "GeoFence",
-        )
+        inherited = _get_inherited_from(doc, NS + "MonitoredGeoFence", NS + "GeoFence")
         assert "radiusMetres" in inherited
 
-    def test_monitored_geo_fence_inherits_from_precise_location_transitively(self, rendered_html):
+    def test_monitored_geo_fence_inherits_from_precise_location_transitively(self, doc):
         """Transitive: MonitoredGeoFence -> GeoFence -> PreciseLocation.
         GeoFence's template shows PreciseLocation's elements."""
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "GeoFence",
-            NS + "PreciseLocation",
-        )
+        inherited = _get_inherited_from(doc, NS + "GeoFence", NS + "PreciseLocation")
         assert "latitude" in inherited
         assert "longitude" in inherited
         assert "altitude" in inherited
 
-    def test_monitored_geo_fence_own_elements(self, rendered_html):
-        own = _get_own_element_names(
-            rendered_html,
-            NS + "MonitoredGeoFence",
-        )
+    def test_monitored_geo_fence_own_elements(self, doc):
+        own = _get_own_element_names(doc, NS + "MonitoredGeoFence")
         assert "monitoringInterval" in own
         assert "alertEndpoint" in own
 
@@ -245,72 +197,52 @@ class TestCase3ComplexContentRestriction:
 class TestCase4MixedChain:
     """SensorBase (direct) -> TemperatureSensor (ext) -> CalibratedTempSensor (restr) -> HighAccuracySensor (ext)."""
 
-    def test_temperature_sensor_inherits_from_sensor_base(self, rendered_html):
-        inherited = _get_inherited_from(
-            rendered_html,
-            NS + "TemperatureSensor",
-            NS + "SensorBase",
-        )
+    def test_temperature_sensor_inherits_from_sensor_base(self, doc):
+        inherited = _get_inherited_from(doc, NS + "TemperatureSensor", NS + "SensorBase")
         assert "sensorId" in inherited
         assert "installDate" in inherited
 
-    def test_temperature_sensor_own_elements(self, rendered_html):
-        own = _get_own_element_names(
-            rendered_html,
-            NS + "TemperatureSensor",
-        )
+    def test_temperature_sensor_own_elements(self, doc):
+        own = _get_own_element_names(doc, NS + "TemperatureSensor")
         assert "unit" in own
         assert "precision" in own
         assert "minTemp" in own
         assert "maxTemp" in own
 
-    def test_calibrated_temp_sensor_content(self, rendered_html):
+    def test_calibrated_temp_sensor_content(self, doc):
         """CalibratedTempSensor restricts TemperatureSensor, redeclaring a subset."""
-        content = get_template(
-            rendered_html,
-            "type-contents",
-            NS + "CalibratedTempSensor",
-        )
+        tmpl = get_template(doc, "type-contents", NS + "CalibratedTempSensor")
+        content = inner_html(tmpl)
         assert "sensorId" in content
         assert "installDate" in content
         assert "unit" in content
         assert "precision" in content
 
-    def test_calibrated_temp_sensor_drops_elements(self, rendered_html):
+    def test_calibrated_temp_sensor_drops_elements(self, doc):
         """minTemp and maxTemp should not appear in CalibratedTempSensor's own content."""
-        own = _get_own_element_names(
-            rendered_html,
-            NS + "CalibratedTempSensor",
-        )
+        own = _get_own_element_names(doc, NS + "CalibratedTempSensor")
         assert "minTemp" not in own
         assert "maxTemp" not in own
 
-    def test_high_accuracy_sensor_inherits_from_calibrated(self, rendered_html):
+    def test_high_accuracy_sensor_inherits_from_calibrated(self, doc):
         """Elements from CalibratedTempSensor's restriction node must be inherited."""
         inherited = _get_inherited_from(
-            rendered_html,
-            NS + "HighAccuracySensor",
-            NS + "CalibratedTempSensor",
+            doc, NS + "HighAccuracySensor", NS + "CalibratedTempSensor"
         )
         assert "sensorId" in inherited
         assert "installDate" in inherited
         assert "unit" in inherited
         assert "precision" in inherited
 
-    def test_high_accuracy_sensor_does_not_inherit_dropped(self, rendered_html):
+    def test_high_accuracy_sensor_does_not_inherit_dropped(self, doc):
         inherited = _get_inherited_from(
-            rendered_html,
-            NS + "HighAccuracySensor",
-            NS + "CalibratedTempSensor",
+            doc, NS + "HighAccuracySensor", NS + "CalibratedTempSensor"
         )
         assert "minTemp" not in inherited
         assert "maxTemp" not in inherited
 
-    def test_high_accuracy_sensor_own_elements(self, rendered_html):
-        own = _get_own_element_names(
-            rendered_html,
-            NS + "HighAccuracySensor",
-        )
+    def test_high_accuracy_sensor_own_elements(self, doc):
+        own = _get_own_element_names(doc, NS + "HighAccuracySensor")
         assert "calibrationCertificate" in own
         assert "lastCalibrationDate" in own
 
@@ -323,27 +255,17 @@ class TestCase4MixedChain:
 class TestCase5SimpleContentExtension:
     """MeasurementValue (simpleContent/ext) -> TimestampedMeasurement (simpleContent/ext)."""
 
-    def test_measurement_value_has_attribute(self, rendered_html):
-        content = get_template(
-            rendered_html,
-            "type-attrs",
-            NS + "MeasurementValue",
-        )
+    def test_measurement_value_has_attribute(self, doc):
+        tmpl = get_template(doc, "type-attrs", NS + "MeasurementValue")
+        content = inner_html(tmpl)
         assert "unitOfMeasure" in content
 
-    def test_timestamped_measurement_has_own_attributes(self, rendered_html):
-        content = get_template(
-            rendered_html,
-            "type-attrs",
-            NS + "TimestampedMeasurement",
-        )
+    def test_timestamped_measurement_has_own_attributes(self, doc):
+        tmpl = get_template(doc, "type-attrs", NS + "TimestampedMeasurement")
+        content = inner_html(tmpl)
         assert "timestamp" in content
 
-    def test_timestamped_measurement_type_renders(self, rendered_html):
+    def test_timestamped_measurement_type_renders(self, doc):
         """Ensure the type renders without errors (simpleContent chain)."""
-        content = get_template(
-            rendered_html,
-            "type-contents",
-            NS + "TimestampedMeasurement",
-        )
-        assert content is not None
+        tmpl = get_template(doc, "type-contents", NS + "TimestampedMeasurement")
+        assert tmpl is not None

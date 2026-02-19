@@ -6,90 +6,73 @@ Uses tests/samples/test_attributes.xsd which defines:
 - FixedAttr: complexType with a fixed-value "version" attribute
 """
 
-import re
-
 import pytest
-from conftest import SAMPLES_DIR, get_template
+from conftest import SAMPLES_DIR, get_template, inner_html, parse_html
 
 XSD_FILE = SAMPLES_DIR / "test_attributes.xsd"
 
 
 @pytest.fixture(scope="module")
-def rendered_html():
+def doc():
     from xsd_browser.main import render_html
 
-    return render_html(XSD_FILE, minify=False)
+    html = render_html(XSD_FILE, minify=False)
+    return parse_html(html)
 
 
 class TestAttributes:
     """Individual attribute rendering: required badge, type links."""
 
-    def test_required_attribute_badge(self, rendered_html):
+    def test_required_attribute_badge(self, doc):
         # "id" has use="required" → should show a "required" badge
-        content = get_template(
-            rendered_html,
-            "attribute-group",
-            "CommonAttrs",
-        )
+        tmpl = get_template(doc, "attribute-group", "CommonAttrs")
+        content = inner_html(tmpl)
         assert "required" in content
 
-    def test_optional_attribute_no_required_badge(self, rendered_html):
+    def test_optional_attribute_no_required_badge(self, doc):
         # "lang" has no use attribute (defaults to optional) → no "required" badge
-        content = get_template(
-            rendered_html,
-            "attribute-group",
-            "CommonAttrs",
-        )
-        parts = re.split(r"<span class=attribute", content)
-        lang_part = [p for p in parts if "lang=" in p]
-        assert len(lang_part) >= 1
-        assert "required" not in lang_part[0] or "lang" not in lang_part[0].split("required")[0]
+        tmpl = get_template(doc, "attribute-group", "CommonAttrs")
+        attrs = tmpl.xpath('.//*[@class="attribute"]')
+        for attr in attrs:
+            content = inner_html(attr)
+            if "lang=" in content:
+                assert "required" not in content
+                break
+        else:
+            pytest.fail("lang attribute not found")
 
-    def test_attribute_type_link(self, rendered_html):
+    def test_attribute_type_link(self, doc):
         # Attribute types should be rendered as clickable type links
-        content = get_template(
-            rendered_html,
-            "attribute-group",
-            "CommonAttrs",
-        )
-        assert 'class="type-link' in content
+        tmpl = get_template(doc, "attribute-group", "CommonAttrs")
+        assert tmpl.xpath('.//*[contains(@class, "type-link")]')
 
 
 class TestAttributeGroup:
     """Attribute groups should be defined as templates and referenced via <xbe-ref>."""
 
-    def test_attribute_group_defined(self, rendered_html):
+    def test_attribute_group_defined(self, doc):
         # A <template data-type="attribute-group"> should exist for CommonAttrs
-        assert 'data-type="attribute-group"' in rendered_html
-        content = get_template(
-            rendered_html,
-            "attribute-group",
-            "CommonAttrs",
-        )
-        assert content
+        assert doc.xpath('//template[@data-type="attribute-group"]')
+        tmpl = get_template(doc, "attribute-group", "CommonAttrs")
+        assert tmpl is not None
 
-    def test_attribute_group_referenced(self, rendered_html):
+    def test_attribute_group_referenced(self, doc):
         # StyledElement's type-attrs should contain an <xbe-ref> to CommonAttrs
-        content = get_template(
-            rendered_html,
-            "type-attrs",
-            "StyledElement",
-        )
-        assert "type=attribute-group" in content or 'type="attribute-group"' in content
+        tmpl = get_template(doc, "type-attrs", "StyledElement")
+        refs = tmpl.xpath('.//xbe-ref[@type="attribute-group"]')
+        assert refs
+        content = inner_html(tmpl)
         assert "CommonAttrs" in content
 
-    def test_own_attribute_shown(self, rendered_html):
+    def test_own_attribute_shown(self, doc):
         # StyledElement also declares its own "style" attribute directly
-        content = get_template(
-            rendered_html,
-            "type-attrs",
-            "StyledElement",
-        )
+        tmpl = get_template(doc, "type-attrs", "StyledElement")
+        content = inner_html(tmpl)
         assert "style=" in content
 
 
 class TestAttributeGroupsLanding:
     """Attribute groups are not listed on the landing page, but their templates should exist."""
 
-    def test_attribute_groups_in_landing(self, rendered_html):
-        assert 'data-type="attribute-group"' in rendered_html
+    def test_attribute_groups_in_landing(self, doc):
+        assert doc.xpath('//template[@data-type="attribute-group"]')

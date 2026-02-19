@@ -1,69 +1,68 @@
 """Shared test helpers and fixtures for xsd-browser tests."""
 
-import re
 from pathlib import Path
+
+import lxml.html
+from lxml import etree
 
 SAMPLES_DIR = Path(__file__).resolve().parent / "samples"
 
 
-def get_template(html: str, data_type: str, path: str) -> str:
-    """Extract the content of a <template data-type="..." ... data-path="..."> block.
+def parse_html(html: str):
+    """Parse HTML string into an lxml document."""
+    return lxml.html.fromstring(html)
 
-    Template tags span multiple lines and have other attributes between data-type
-    and data-path (data-name, data-substgroup). We use [^>]* to stay within the
-    opening tag (in Python regex, [^>] matches newlines too, unlike '.').
-    """
-    pattern = (
-        rf'<template\s+data-type="{re.escape(data_type)}"'
-        rf'[^>]*data-path="{re.escape(path)}"[^>]*>([\s\S]*?)</template>'
+
+def get_template(doc, data_type: str, path: str):
+    """Return the lxml element for a <template> matching data-type + data-path."""
+    results = doc.xpath(
+        f'//template[@data-type="{data_type}"][@data-path="{path}"]'
     )
-    m = re.search(pattern, html)
-    assert m, f"Template not found: data-type={data_type!r} data-path={path!r}"
-    return m.group(1)
+    assert results, f"Template not found: data-type={data_type!r} data-path={path!r}"
+    return results[0]
 
 
-def get_element_template(html: str, data_type: str, name: str) -> str:
-    """Extract element template by data-name attribute."""
-    pattern = (
-        rf'<template\s+data-type="{re.escape(data_type)}"'
-        rf'[^>]*data-name="{re.escape(name)}"[^>]*>([\s\S]*?)</template>'
+def get_element_template(doc, data_type: str, name: str):
+    """Return template element by data-name."""
+    results = doc.xpath(
+        f'//template[@data-type="{data_type}"][@data-name="{name}"]'
     )
-    m = re.search(pattern, html)
-    assert m, f"Template not found: data-type={data_type!r} data-name={name!r}"
-    return m.group(1)
+    assert results, f"Template not found: data-type={data_type!r} data-name={name!r}"
+    return results[0]
 
 
-def extract_element_names(
-    html_section: str,
-) -> list[str]:
-    """Extract element names from xbe-collapsible-element-ref tags."""
-    return re.findall(
-        r'<xbe-collapsible-element-ref\s+element="([^"]+)"',
-        html_section,
+def inner_html(elem) -> str:
+    """Get inner HTML of an element as string."""
+    return (elem.text or '') + ''.join(
+        etree.tostring(child, encoding='unicode') for child in elem
     )
 
 
-def get_landing(html: str) -> str:
-    """Extract <div class="landing"> content from the landing template."""
-    m = re.search(
-        r"<div class=landing>([\s\S]*?)</template>",
-        html,
+def extract_element_names(elem) -> list[str]:
+    """Extract element= attribute values from xbe-collapsible-element-ref descendants."""
+    return elem.xpath('.//xbe-collapsible-element-ref/@element')
+
+
+def get_landing(doc):
+    """Return the landing div element."""
+    results = doc.xpath('//div[@class="landing"]')
+    assert results, "Landing section not found"
+    return results[0]
+
+
+def get_landing_section(doc, heading: str):
+    """Return the <ul> element following an <h3> with given text."""
+    results = doc.xpath(
+        f'//div[@class="landing"]//h3[text()="{heading}"]/following-sibling::ul[1]'
     )
-    assert m, "Landing section not found"
-    return m.group(1)
+    if not results:
+        return None
+    return results[0]
 
 
-def get_landing_section(html: str, heading: str) -> str:
-    """Extract a section from the landing page by its h3 heading text."""
-    landing = get_landing(html)
-    pattern = rf"<h3>{re.escape(heading)}</h3>\s*<ul>([\s\S]*?)</ul>"
-    m = re.search(pattern, landing)
-    if not m:
-        return ""
-    return m.group(1)
-
-
-def get_landing_links(html: str, heading: str) -> list[str]:
+def get_landing_links(doc, heading: str) -> list[str]:
     """Extract link texts from a landing section."""
-    section = get_landing_section(html, heading)
-    return re.findall(r"<a[^>]*>([^<]+)</a>", section)
+    section = get_landing_section(doc, heading)
+    if section is None:
+        return []
+    return [a.text_content() for a in section.xpath('.//a')]
