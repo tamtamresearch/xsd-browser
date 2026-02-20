@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- **Browser-based WASM version** — New `index.html` and `worker.js` provide a fully client-side XSD-to-HTML converter using Pyodide. Upload a ZIP of XSD files, select an entry point, and download the rendered HTML — no server required. Python runs in a Web Worker to keep the UI responsive, with live status updates throughout setup and conversion.
+
 ## [0.3.0] - 2026-02-23
 
 ### Changed

@@ -271,10 +271,6 @@ def _prefix_root_elements(elements, add_prefix):
 
 def render_html(input_path: Path, *, minify: bool = True) -> str:
     """Parse an XSD file and render it to HTML. Returns the HTML string."""
-
-    # TODO
-    return str(input_path)
-
     main_doc = parse_xml(input_path)
 
     logger.info("Processing imports...")
