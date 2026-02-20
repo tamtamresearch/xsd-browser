@@ -17,7 +17,7 @@
 
 <div class="card">
     <h2>XSD Parser</h2>
-    <input type="file" id="zipInput" accept=".zip" disabled>
+    <input type="file" id="zipInput" accept=".zip,.xsd" disabled>
     <select id="entrySelect" disabled><option>Select Entry XSD...</option></select>
     <button id="convertBtn" disabled>Loading Python...</button>
     <div id="status">Initializing...</div>
@@ -63,50 +63,66 @@
         }
     };
 
-    // Handle ZIP selection: list XSDs in dropdown
+    // Handle file selection: single .xsd or .zip archive
     zipInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        const zip = await JSZip.loadAsync(file);
-        entrySelect.innerHTML = "";
-        const xsds = Object.keys(zip.files).filter(name => name.endsWith('.xsd'));
-
-        xsds.forEach(name => {
+        if (file.name.endsWith('.xsd')) {
+            entrySelect.innerHTML = "";
             const opt = document.createElement('option');
-            opt.value = name;
-            opt.innerText = name;
+            opt.value = file.name;
+            opt.innerText = file.name;
             entrySelect.appendChild(opt);
-        });
+            entrySelect.disabled = true;
+            btn.disabled = !workerReady;
+        } else {
+            const zip = await JSZip.loadAsync(file);
+            entrySelect.innerHTML = "";
+            const xsds = Object.keys(zip.files).filter(name => name.endsWith('.xsd'));
 
-        entrySelect.disabled = false;
-        btn.disabled = !workerReady;
+            xsds.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                entrySelect.appendChild(opt);
+            });
+
+            entrySelect.disabled = false;
+            btn.disabled = !workerReady;
+        }
     };
 
     btn.onclick = async () => {
         const file = zipInput.files[0];
         const entryPoint = entrySelect.value;
         btn.disabled = true;
-        status.innerText = "Reading ZIP archive...";
 
-        // Extract ZIP on main thread (JSZip is async/non-blocking),
-        // then send raw file contents to the worker for VFS writing
-        const zip = await JSZip.loadAsync(file);
-        const files = {};
-        const entries = Object.entries(zip.files);
+        if (file.name.endsWith('.xsd')) {
+            status.innerText = "Reading XSD file...";
+            const buffer = await file.arrayBuffer();
+            const files = { [file.name]: new Uint8Array(buffer) };
+            status.innerText = "Sending file to worker...";
+            worker.postMessage({ type: 'convert', files, entryPoint });
+        } else {
+            status.innerText = "Reading ZIP archive...";
+            const zip = await JSZip.loadAsync(file);
+            const files = {};
+            const entries = Object.entries(zip.files);
 
-        for (let i = 0; i < entries.length; i++) {
-            const [path, zipEntry] = entries[i];
-            if (zipEntry.dir) {
-                files[path] = null; // directory marker
-            } else {
-                files[path] = await zipEntry.async("uint8array");
+            for (let i = 0; i < entries.length; i++) {
+                const [path, zipEntry] = entries[i];
+                if (zipEntry.dir) {
+                    files[path] = null; // directory marker
+                } else {
+                    files[path] = await zipEntry.async("uint8array");
+                }
+                status.innerText = `Reading ZIP (${i + 1}/${entries.length}): ${path}`;
             }
-            status.innerText = `Reading ZIP (${i + 1}/${entries.length}): ${path}`;
-        }
 
-        status.innerText = "Sending files to worker...";
-        worker.postMessage({ type: 'convert', files, entryPoint });
+            status.innerText = "Sending files to worker...";
+            worker.postMessage({ type: 'convert', files, entryPoint });
+        }
     };
 </script>
 </body>
