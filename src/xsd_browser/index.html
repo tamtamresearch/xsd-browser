@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XSD Browser Pro</title>
+    <title>XSD Browser</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f4f7f6; margin: 0; }
@@ -11,6 +11,7 @@
         button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
         button:disabled { background: #ccc; }
         #status { font-size: 0.8rem; color: #666; text-align: center; }
+        #subtitle { font-size: 0.85rem; color: #666; margin: 0 0 8px; }
         .landing-footer {
             position: fixed; bottom: 0; left: 0; right: 0;
             display: flex; justify-content: space-between; align-items: center;
@@ -25,7 +26,8 @@
 <body>
 
 <div class="card">
-    <h2>XSD Parser</h2>
+    <h2>XSD Browser</h2>
+    <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files. Accepts a single .xsd file or a .zip archive containing a multi-file XSD schema.</p>
     <input type="file" id="zipInput" accept=".zip,.xsd" disabled>
     <select id="entrySelect" disabled><option>Select Entry XSD...</option></select>
     <button id="convertBtn" disabled>Loading Python...</button>
@@ -51,7 +53,7 @@
             case 'ready':
                 workerReady = true;
                 zipInput.disabled = false;
-                btn.innerText = "Process Selected XSD";
+                btn.innerText = "Generate HTML";
                 status.innerText = "Ready.";
                 break;
             case 'result':
