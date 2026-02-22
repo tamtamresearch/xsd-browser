@@ -1,0 +1,512 @@
+/* === Typography === */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    color: #1f2937;
+    background-color: #fafafa;
+}
+
+.element-head, .element-end, .attribute, code, .simple {
+    font-family: "SF Mono", "Consolas", "Monaco", "Menlo", monospace;
+    font-size: 13px;
+}
+
+main {
+    margin: 16px;
+}
+
+/* === Header === */
+header {
+    background-color: #2c3e50;
+    padding: 12px 16px;
+    border-bottom: 3px solid #1a252f;
+}
+header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    color: #fff;
+}
+header h1 a, header h1 a:hover {
+    color: inherit;
+    text-decoration: none;
+}
+
+h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+code {
+    background-color: #f3f4f6;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+ul, ol {
+    margin: 0 4px;
+    padding-left: 20px;
+}
+
+xbe-ref {
+    display: contents;
+}
+
+/* === Element display === */
+.element-head, .element-end {
+    /* Make elements touch each other directly without regard for
+       whitespace. We can then set margin/padding as necessary */
+    display: flex;
+    flex-direction: row;
+}
+
+.element-end {
+    margin-bottom: 12px;
+}
+
+.element-head > :last-child {
+    /* Align closing ">" */
+    align-self: end;
+}
+
+:is(.element-head, .element-end) .sample {
+    color: #4b5563;
+    font-style: italic;
+}
+
+.element-children, .extension-content {
+    padding-left: 24px;
+}
+
+/* === Badges === */
+.occurs {
+    display: inline-flex;
+    align-self: baseline;
+    margin-left: 8px;
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.small-note {
+    display: inline;
+    margin-left: 8px;
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+/* === Attributes === */
+.attribute {
+    display: flex;
+    flex-direction: row;
+    margin-left: 8px;
+}
+
+/* === Annotations === */
+.annotation {
+    color: #6b7280;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    max-width: 800px;
+    font-style: italic;
+}
+
+/* === Origin labels === */
+.origin {
+    font-size: 11px;
+    font-weight: 500;
+    color: #6b7280;
+    background-color: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-bottom: 6px;
+    display: inline-block;
+}
+
+/* Always-shown origins */
+.builtin-type .origin {
+    display: inline-block;
+}
+
+:is(.extension, .simple-list, .restriction)
+> :is(.note, .builtin-type, .simple-type, .origin) {
+    display: inline;
+    color: #1e40af;
+}
+
+/* === Attribute boxes === */
+:is(.complex-type-attrs, .extension-attrs, .restriction-attrs,
+    .attribute-group, .substitution-group) {
+    display: block;
+    margin: 6px 8px;
+    padding: 8px 12px;
+    border-left: 3px solid #6c757d;
+    border-top: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 3px;
+    background-color: #fff;
+}
+
+:is(.complex-type-attrs, .extension-attrs, .restriction-attrs,
+    .attribute-group) > .note {
+    font-size: 11px;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+/* === Choice and Sequence boxes === */
+.choice, .sequence {
+    display: block;
+    margin: 6px 8px;
+    padding: 8px 12px;
+    border-radius: 3px;
+    background-color: #fff;
+}
+
+.choice {
+    border-left: 4px solid #b85450;
+    border-top: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+}
+.choice > .origin {
+    color: #991b1b;
+    background-color: #fee2e2;
+}
+
+.sequence {
+    border-left: 4px solid #4a7c59;
+    border-top: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+}
+.sequence > .origin {
+    color: #166534;
+    background-color: #dcfce7;
+}
+
+/* === Union box === */
+.simple-union {
+    display: block;
+    margin: 6px 8px;
+    padding: 8px 12px;
+    border-left: 4px solid #4a6fa5;
+    border-top: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 3px;
+    background-color: #fff;
+}
+.simple-union > .origin {
+    color: #1e40af;
+    background-color: #dbeafe;
+}
+
+.group-wrapper > .origin {
+    display: inline;
+}
+
+/* === Links === */
+a {
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* Element links */
+a[href^="#element-"] {
+    color: #2563eb;
+}
+a[href^="#element-"]:hover {
+    background-color: rgba(37, 99, 235, 0.1);
+    border-radius: 2px;
+}
+
+/* Type links */
+a[href^="#type-"] {
+    color: #7c3aed;
+}
+a[href^="#type-"]:hover {
+    background-color: rgba(124, 58, 237, 0.1);
+    border-radius: 2px;
+}
+
+/* Group links */
+a[href^="#group-"], a[href^="#attribute-group-"] {
+    color: #059669;
+}
+a[href^="#group-"]:hover, a[href^="#attribute-group-"]:hover {
+    background-color: rgba(5, 150, 105, 0.1);
+    border-radius: 2px;
+}
+
+/* === Disclosure triangles === */
+.collapsible-element-ref > summary:first-of-type::marker {
+    display: none;
+}
+.collapsible-element-ref > summary:first-of-type {
+    display: flex;
+    cursor: pointer;
+}
+.collapsible-element-ref > summary:first-of-type > .arrow {
+    display: inline-flex;
+    width: 14px;
+    transform: translateY(-3px);
+    flex-shrink: 0;
+    margin-left: -4px;
+}
+.collapsible-element-ref > summary:first-of-type > .arrow::before {
+    content: "\25B8";
+    font-size: 16px;
+    color: #6b7280;
+}
+.collapsible-element-ref[open] > summary:first-of-type > .arrow::before {
+    content: "\25BE";
+}
+.collapsible-element-ref > summary:first-of-type:hover > .arrow::before {
+    color: #374151;
+}
+.collapsible-element-ref[open] > summary > .simple {
+    display: none;
+}
+.collapsible-element-ref > summary > .detailed {
+    display: none;
+}
+.collapsible-element-ref[open] > summary > .detailed {
+    display: initial;
+}
+
+/* === Usages box === */
+.usages-box, .extended-by-box {
+    display: block;
+    margin: 6px 8px 12px;
+    padding: 7px 7px;
+    border-left: 3px solid #9ca3af;
+    border-top: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 3px;
+    background-color: #fff;
+}
+
+.usages-box > summary, .extended-by-box > summary {
+    display: flex;
+    list-style: none;
+    cursor: pointer;
+    align-items: center;
+}
+.usages-box > summary::-webkit-details-marker,
+.extended-by-box > summary::-webkit-details-marker {
+    display: none;
+}
+.usages-box > summary::marker, .extended-by-box > summary::marker {
+    content: "";
+}
+.usages-box > summary:hover, .extended-by-box > summary:hover {
+    color: #1f2937;
+}
+.usages-box > summary::before, .extended-by-box > summary::before {
+    content: "\25B8";
+    font-size: 16px;
+    width: 18px;
+    color: #6b7280;
+}
+.usages-box[open] > summary::before, .extended-by-box[open] > summary::before {
+    content: "\25BE";
+}
+.usages-box .usages, .extended-by-box .usages {
+    list-style: none;
+    padding-left: 16px;
+    margin: 4px 0 0;
+}
+.usages-box:not(:has(.usages li)), .extended-by-box:not(:has(.usages li)) {
+    display: none;
+}
+.usages a {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* === Landing page === */
+.landing {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.landing section h2 {
+    margin-top: 0;
+}
+
+.landing ul {
+    column-width: 250px;
+    column-gap: 24px;
+    list-style: none;
+    padding-left: 0;
+}
+
+.landing a {
+    overflow-wrap: break-word;
+}
+
+.landing li {
+    break-inside: avoid;
+    padding: 2px 0;
+}
+
+.landing-card {
+    grid-column: 1 / -1;
+}
+
+.landing-card > details {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px 20px;
+    background: #fff;
+}
+
+.landing-card summary {
+    cursor: pointer;
+    list-style: revert;
+}
+
+.landing-card summary h2 {
+    display: inline;
+    border-bottom: none;
+    padding-bottom: 0;
+    margin: 0;
+}
+
+.landing-definitions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px 24px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.landing-definitions-grid h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0 0 8px 0;
+}
+
+.landing-prefixes .ns-grid {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.ns-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px 16px;
+    background: #f9fafb;
+}
+
+.ns-card-prefix {
+    font-family: "SF Mono", "Consolas", "Monaco", "Menlo", monospace;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.ns-card-prefix.default {
+    font-weight: 400;
+    color: #6b7280;
+}
+
+.ns-card-uri {
+    font-size: 12px;
+    color: #6b7280;
+    word-break: break-all;
+}
+
+/* === Enumeration documentation === */
+.enum-doc {
+    color: #666;
+    font-style: italic;
+}
+
+/* === Landing info block === */
+
+.info-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+}
+
+.info-value {
+    color: #4b5563;
+}
+
+.info-value small {
+    color: #6b7280;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+/* === Landing footer === */
+.landing-footer {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #2c3e50;
+    padding: 10px 16px;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.landing-footer, .landing-footer span {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.landing-footer a {
+    color: #cbd5e1;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.landing-footer a:hover {
+    color: #fff;
+    text-decoration: underline;
+}

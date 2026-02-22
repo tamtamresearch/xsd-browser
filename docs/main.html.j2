@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+{# This file is licenced under the GNU AGPLv3 or later
+   Original work (c) 2023 David Koňařík
+   Modified work (c) 2026 Roman Hořeňovský, TamTam Research s.r.o. #}
+<html lang=en>
+<head>
+    <meta charset=utf-8>
+    <title>XML schema: {{ main_xml_path.name }}</title>
+    <script>
+{% include 'main.js' %}
+    </script>
+
+    <style>
+{% include 'main.css' %}
+    </style>
+</head>
+<body>
+    {% macro el_template(type, el) %}
+        <template data-type="{{ type }}"
+                  {{ el|elem_path_attrs|xmlattr }}>
+            {{ caller() }}
+        </template>
+    {% endmacro %}
+
+    {% macro el_div(class, el) %}
+        <div class="{{ class }}"
+             {{ el|elem_name_attrs|xmlattr }}>
+            {{ caller() }}
+        </div>
+    {% endmacro %}
+
+    {% macro elem_link(name, on) %}
+        {{ record_usage(on, ("element", name)) }}
+        <a class="element-link"
+           href="#element-{{ name }}">
+            {{ name }}
+        </a>
+    {% endmacro %}
+
+    {% macro type_link(type, on) -%}
+        {{ record_usage(on, ("type", type)) }}
+        {%- if not type.startswith("xsd:") -%}
+            <a class="type-link" href="#type-{{ type }}">{{ type }}</a>
+        {%- else -%}
+            <a class="type-link xsd-builtin"
+               href="https://www.w3.org/TR/xmlschema11-2/#{{ type[4:] }}"
+               target="_blank"
+               title="W3C XML Schema built-in type">{{ type }}</a>
+        {%- endif -%}
+    {%- endmacro %}
+
+    {% macro group_link(name, on) %}
+        {{ record_usage(on, ("group", name)) }}
+        <a class="group-link"
+           href="#group-{{ name }}">
+            {{ name }}
+        </a>
+    {% endmacro %}
+
+    {% macro attribute(attr_el, on) %}
+        <span class=attribute
+              {{ attr_el|elem_name_attrs|xmlattr }}>
+            {{ attr_el.attrib.name }}=
+            {% if attr_el.attrib.type %}
+                {{ type_link(attr_el.attrib.type, on) }}
+            {% else %}
+                {% for st_el in attr_el|xpath("xsd:simpleType") %}
+                    {{ simple_type_contents(st_el) }}
+                {% endfor %}
+            {% endif %}
+            {% set occurs = attr_el.attrib.use|default("optional") %}
+            {% if occurs != "optional" %}
+                <span class=occurs>{{ occurs }}</span>
+            {% endif %}
+        </span>
+    {% endmacro %}
+
+    {% macro child_attributes(el, on) %}
+        {% for attr_el in el|xpath("xsd:attribute") %}
+            {{ attribute(attr_el, on) }}
+        {% endfor %}
+        {% for attrgr_el in el|xpath("xsd:attributeGroup[@ref]") %}
+            {{ record_usage(on, ("attribute-group", attrgr_el.attrib.ref)) }}
+            <xbe-ref type=attribute-group ref="{{ attrgr_el.attrib.ref }}"></xbe-ref>
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro child_elements(el, on) %}
+        {% for elem_el in el|xpath("xsd:element") %}
+            {% set ref = elem_el.attrib.name or elem_el.attrib.ref %}
+            {{ record_usage(on, ("element", ref)) }}
+            <xbe-collapsible-element-ref element="{{ ref }}">
+                <span slot=after-head>
+                    {{ element_occurs(elem_el) }}
+                </span>
+            </xbe-collapsible-element-ref>
+        {% endfor %}
+
+        {% for choice_el in el|xpath("xsd:choice") %}
+            {% call el_div("choice", choice_el) %}
+                <span class="origin">Choice</span>
+                {{ element_occurs(choice_el) }}
+                {{ child_annotations(choice_el) }}
+                {{ child_elements(choice_el, on) }}
+            {% endcall %}
+        {% endfor %}
+
+        {% for seq_el in el|xpath("xsd:sequence") %}
+            {% call el_div("sequence", seq_el) %}
+                <span class="origin">Sequence</span>
+                {{ element_occurs(seq_el) }}
+                {{ child_annotations(seq_el) }}
+                {{ child_elements(seq_el, on) }}
+            {% endcall %}
+        {% endfor %}
+
+        {% for group_el in el|xpath("xsd:group") %}
+            <div class=group-wrapper>
+                {{ elem_origin("group", group_el) }}
+                {{ element_occurs(group_el) }}
+                {% if "ref" in group_el.attrib %}
+                    {{ group_contents_ref(group_el.attrib.ref, on) }}
+                {% else %}
+                    {{ group_contents(group_el, on) }}
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro child_annotations(el) %}
+        {% for doc_el in el|xpath("xsd:annotation/*") %}
+            <p class=annotation>{{ doc_el|xpath("string()") }}</p>
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro elem_origin(prefix, el, kind="") %}
+        <div class=origin>
+            {% if "name" in el.attrib or "ref" in el.attrib %}
+                {{ prefix|capitalize }}
+                {% if kind == "type" %}
+                    {{ type_link(el.attrib.name or el.attrib.ref) }}
+                {% else %}
+                    {{ el.attrib.name or el.attrib.ref }}
+                {% endif %}
+            {% else %}
+                Inline {{ prefix }}
+            {% endif %}
+        </div>
+    {% endmacro %}
+
+    {% macro complex_type_origin(ct_el) %}
+        {{ elem_origin("complex type", ct_el, kind="type") }}
+    {% endmacro %}
+
+    {% macro complex_type_attrs(ct_el, on) %}
+        <span class=complex-type-attrs {{ ct_el|elem_name_attrs|xmlattr }}>
+            {{ complex_type_origin(ct_el) }}
+            {{ child_attributes(ct_el, on) }}
+
+            {% for ext_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                {% call el_div("extension-attrs", ext_el) %}
+                    <div class=note>Inherited attributes from {{ type_link(ext_el.attrib.base, on) }}:</div>
+                    <div class="inherited">
+                        {{ type_attrs_ref(ext_el.attrib.base, on) }}
+                    </div>
+
+                    {% set new_attrs %}{{ child_attributes(ext_el, on) }}{% endset %}
+                    {% if new_attrs|trim %}
+                    <div class=note>New attributes:</div>
+                    {{ new_attrs }}
+                    {% endif %}
+                {% endcall %}
+            {% endfor %}
+
+            {% for rest_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
+                {% call el_div("restriction-attrs", rest_el) %}
+                    <div class=note>Inherited attributes from {{ type_link(rest_el.attrib.base, on) }}:</div>
+                    <div class="inherited">
+                        {{ type_attrs_ref(rest_el.attrib.base, on) }}
+                    </div>
+
+                    {% set allowed_attrs %}{{ child_attributes(rest_el, on) }}{% endset %}
+                    {% if allowed_attrs|trim %}
+                    <div class=note>Allowed attributes:</div>
+                    {{ allowed_attrs }}
+                    {% endif %}
+                {% endcall %}
+            {% endfor %}
+        </span>
+    {% endmacro %}
+    
+    {% macro inherited_elements(base, on) %}
+        {% for base_ct in doc|xpath('//xsd:complexType[@name="{}"]'.format(base)) %}
+            {# Recurse into grandparent first (oldest ancestor appears first).
+               Pass empty on="" so indirect ancestors don't record spurious usages. #}
+            {% for ext_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                {{ inherited_elements(ext_el.attrib.base, "") }}
+            {% endfor %}
+            {% for rest_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
+                {{ inherited_elements(rest_el.attrib.base, "") }}
+            {% endfor %}
+
+            {# Collect this ancestor's own elements #}
+            {% set own_content %}
+                {% for ext_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                    {{ child_elements(ext_el, on) }}
+                {% endfor %}
+                {% for rest_el in base_ct|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
+                    {{ child_elements(rest_el, on) }}
+                {% endfor %}
+                {{ child_elements(base_ct, on) }}
+            {% endset %}
+            {% if own_content|trim %}
+                <div class="inherited-section">
+                    <div class=note>Inherited from {{ type_link(base, on) }}:</div>
+                    <div class="extension-content inherited">
+                        {{ own_content }}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro extended_by(type_name) %}
+        {% set local = type_name.split(":")[-1] %}
+        {% set derived = doc|xpath(
+            '//xsd:complexType[(xsd:simpleContent|xsd:complexContent)/xsd:extension[' ~
+            'substring-after(@base, ":")="{}" or @base="{}"]]'.format(local, type_name)
+        ) %}
+        {% set derived = derived|rejectattr("attrib.name", "equalto", type_name)|list %}
+
+        {% if derived %}
+            <details class="extended-by-box">
+                <summary>Extended by:</summary>
+                <ul class="usages">
+                    {% for ct in derived %}
+                        <li><a href="#type-{{ ct.attrib.name }}">{{ ct.attrib.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </details>
+        {% endif %}
+    {% endmacro %}
+
+    {% macro complex_type_contents(ct_el, on) %}
+        {% call el_div("complex-type-contents", ct_el) %}
+            {{ complex_type_origin(ct_el) }}
+            {% if ct_el.attrib.name %}{{ extended_by(ct_el.attrib.name) }}{% endif %}
+            {{ child_annotations(ct_el) }}
+
+            {# 1) Vlastní elementy typu #}
+            {{ child_elements(ct_el, on) }}
+
+            {# 2) Zděděné elementy #}
+            {% for ext_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:extension") %}
+                {% call el_div("extension", ext_el) %}
+                    {{ inherited_elements(ext_el.attrib.base, on) }}
+
+                    {% set new_content %}{{ child_elements(ext_el, on) }}{% endset %}
+                    {% if new_content|trim %}
+                        <div class="new-elements-section">
+                            <div class=note>New elements:</div>
+                            <div class="extension-content">
+                                {{ new_content }}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endcall %}
+            {% endfor %}
+
+            {# 3) Restriction #}
+            {% for rest_el in ct_el|xpath("(xsd:simpleContent|xsd:complexContent)/xsd:restriction") %}
+                {% call el_div("restriction", rest_el) %}
+                    {{ inherited_elements(rest_el.attrib.base, on) }}
+
+                    {% set allowed_content %}{{ child_elements(rest_el, on) }}{% endset %}
+                    {% if allowed_content|trim %}
+                        <div class="allowed-elements-section">
+                            <div class=note>Allowed elements:</div>
+                            <div class="restriction-content">
+                                {{ allowed_content }}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endcall %}
+            {% endfor %}
+        {% endcall %}
+    {% endmacro %}
+
+    {% macro simple_type_contents(st_el, on) %}
+        {% call el_div("simple-type", st_el) %}
+            {{ elem_origin("simple type", st_el, kind="type") }}
+            {{ child_annotations(st_el) }}
+
+            {% for union_el in st_el|xpath("xsd:union") %}
+                {% call el_div("simple-union", union_el) %}
+                    <span class="origin">Union</span>
+                    {% for st2_name in (union_el.attrib.memberTypes|default("")).split() %}
+                        {{ type_contents_ref(st2_name, on) }}
+                    {% endfor %}
+                    {% for st2_el in union_el|xpath("xsd:simpleType") %}
+                        {{ simple_type_contents(st2_el, on) }}
+                    {% endfor %}
+                {% endcall %}
+            {% endfor %}
+
+            {% for list_el in st_el|xpath("xsd:list") %}
+                {% call el_div("simple-list", list_el) %}
+                    List of:
+                    {{ type_contents_ref(list_el.attrib.itemType, on) }}
+                {% endcall %}
+            {% endfor %}
+
+            {% for rest_el in st_el|xpath("xsd:restriction") %}
+                {% call el_div("restriction", rest_el) %}
+                    Restriction of:
+                    {{ type_contents_ref(rest_el.attrib.base, on) }}
+
+                    <ul>
+                        {% for el in rest_el %}
+                            {% if el.tag == "{http://www.w3.org/2001/XMLSchema}enumeration" %}
+                                <li>
+                                    <code>{{ el.attrib.value }}</code>
+                                    {% for doc_el in el|xpath("xsd:annotation/xsd:documentation") %}
+                                        <span class="enum-doc"> — {{ doc_el|xpath("string()")|trim }}</span>
+                                    {% endfor %}
+                                </li>
+                            {% else %}
+                                <li><code>{{ el|prettyprint_xml }}</code></li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                {% endcall %}
+            {% endfor %}
+        {% endcall %}
+    {% endmacro %}
+
+    {% macro group_contents(group_el, on) %}
+        {% call el_div("group-contents", group_el) %}
+            {{ child_annotations(group_el) }}
+            {{ child_elements(group_el, on) }}
+        {% endcall %}
+    {% endmacro %}
+
+    {% macro usages_content_inner(type, name) %}
+        {% for from_t, from_n in usages_by_name[(type, name)] %}
+            {% if from_t == "element" %}
+                <li>{{ elem_link(from_n) }}</li>
+            {% elif from_t == "type" %}
+                <li>{{ type_link(from_n) }}</li>
+            {% elif from_t == "group" %}
+                <li>{{ group_link(from_n) }}</li>
+            {% else %}
+                <li>{{ from_t }} {{from_n}}</li>
+            {% endif %}
+        {% endfor %}
+    {% endmacro %}
+
+    {% macro usages_content_sg(el, type) %}
+        {% if el.attrib.substitutionGroup %}
+            <li class=subst-usages>
+                <span class=origin>Substitution group {{ el.attrib.substitutionGroup }}</span>
+                <ul>
+                    {{ usages_content_inner(type, el.attrib.substitutionGroup) }}
+
+                    {% if type == "element" %} {# TODO: Other types #}
+                        {% for base_el in doc|xpath('//xsd:element[@name="{}"]'.format(
+                                el.attrib.substitutionGroup)) %}
+                                {{ usages_content_sg(base_el, type) }}
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+            </li>
+        {% endif %}
+    {% endmacro %}
+
+    {% macro usages_content(named_el) %}
+        {% set type = named_el|elem_type %} 
+        <ul class=usages>
+            {{ usages_content_inner(type, named_el.attrib.name) }}
+            {{ usages_content_sg(named_el, type) }}
+        </ul>
+    {% endmacro %}
+
+    {% macro type_attrs_ref(type, on) %}
+        {% if not type %}
+        {% elif not type.startswith("xsd:") %}
+            {{ record_usage(on, ("type", type)) }}
+            {# Builtin types don't have attributes(?) #}
+            <xbe-ref type=type-attrs ref="{{ type }}"></xbe-ref>
+        {% endif %}
+    {% endmacro %}
+
+    {% macro type_contents_ref(type, on) %}
+        {% if not type %}
+        {% elif not type.startswith("xsd:") %}
+            {{ record_usage(on, ("type", type)) }}
+            <xbe-ref type=type-contents ref="{{ type }}"></xbe-ref>
+        {% else %}
+            <div class=builtin-type>
+                <div class=origin>Builtin type {{ type_link(type, on) }}</div>
+            </div>
+        {% endif %}
+    {% endmacro %}
+
+    {% macro record_usage(on, uses) %}
+        {% if on %}
+            {% do usages_by_name[uses].add(on) %}
+        {% endif %}
+    {% endmacro %}
+
+    {% macro element_occurs(el) %}
+        {% set min_occurs = el.attrib.minOccurs|default("1") %}
+        {% set max_occurs = el.attrib.maxOccurs|default("1") %}
+        {% if max_occurs == "unbounded" %}
+            {% set max_occurs = "*" %}
+        {% endif %}
+        {% if min_occurs != "1" or max_occurs != "1" %}
+            <span class=occurs>
+                <span>{{ el.attrib.minOccurs|default(1) }}</span>
+                <span class=sep>:</span>
+                <span>{{ max_occurs }}</span>
+            </span>
+        {% endif %}
+    {% endmacro %}
+
+    {% macro group_contents_ref(name, on) %}
+        {{ record_usage(on, ("group", name)) }}
+        <xbe-ref type=group-contents ref="{{ name }}"></xbe-ref>
+    {% endmacro %}
+
+    <div id=elements>
+        {% for elem_el in doc|xpath("//xsd:element[@name]") %}
+            {% set on = ("element", elem_el.attrib.name) %}
+            {% call el_template("element-head", elem_el) %}
+                {% call el_div("element-head", elem_el) %}
+                    &lt;{{ elem_el.attrib.name }}
+                    {% if elem_el.attrib.abstract == "true" %}
+                        <span class=small-note>abstract</span>
+                    {% endif %}
+                    {{ child_attributes(elem_el, on) }}
+                    {% for ct_el in elem_el|xpath("xsd:complexType") %}
+                        {{ complex_type_attrs(ct_el, on) }}
+                    {% else %}
+                        {{ type_attrs_ref(elem_el.attrib.type, on) }}
+                    {% endfor %}
+                    <span>&gt;</span>
+                {% endcall %}
+            {% endcall %}
+
+            {% call el_template("element-contents", elem_el) %}
+                {% call el_div("element-children", elem_el) %}
+                    {{ child_annotations(elem_el) }}
+
+                    {% for ct_el in elem_el|xpath("xsd:complexType") %}
+                        {{ complex_type_contents(ct_el, on) }}
+                    {% else %}
+                        {{ type_contents_ref(elem_el.attrib.type, on) }}
+                    {% endfor %}
+                {% endcall %}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=attribute-groups>
+        {% for attrgr_el in doc|xpath("//xsd:attributeGroup[@name]") %}
+            {% set on = ("attribute-group", attrgr_el.attrib.name) %}
+            {% call el_template("attribute-group", attrgr_el) %}
+                {% call el_div("attribute-group", attrgr_el) %}
+                    {{ elem_origin("attribute group", attrgr_el) }}
+                    {{ child_annotations(attrgr_el) }}
+                    {% for attr_el in attrgr_el|xpath("xsd:attribute") %}
+                        {{ attribute(attr_el, on) }}
+                    {% endfor %}
+                {% endcall %}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=complex-types>
+        {% for ct_el in doc|xpath("//xsd:complexType[@name]") %}
+            {% set on = ("type", ct_el.attrib.name) %}
+            {% call el_template("type-attrs", ct_el) %}
+                {{ complex_type_attrs(ct_el, on) }}
+            {% endcall %}
+
+            {% call el_template("type-contents", ct_el) %}
+                {{ complex_type_contents(ct_el, on) }}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=simple-types>
+        {% for st_el in doc|xpath("//xsd:simpleType[@name]") %}
+            {% set on = ("type", st_el.attrib.name) %}
+            {% call el_template("type-attrs", st_el) %}
+            {% endcall %}
+
+            {% call el_template("type-contents", st_el) %}
+                {{ simple_type_contents(st_el, on) }}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=groups>
+        {% for group_el in doc|xpath("//xsd:group[@name]") %}
+            {% set on = ("group", group_el.attrib.name) %}
+            {% call el_template("group-contents", group_el) %}
+                {{ group_contents(group_el, on) }}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <div id=usages>
+        {% for named_el in doc|xpath(
+                "(//xsd:element|//xsd:simpleType|//xsd:complexType|//xsd:group|//xsd:attributeGroup)[@name]") %}
+            {% set type = named_el|elem_type %}
+            {% call el_template(type + "-usages", named_el) %}
+                {{ usages_content(named_el) }}
+            {% endcall %}
+        {% endfor %}
+    </div>
+
+    <template id=collapsible-element-ref-template>
+        <details class=collapsible-element-ref
+                 data-element=ELEMENT
+                 ontoggle="onCollapsibleElementRefToggle(this)">
+            <summary>
+                <div class=arrow></div>
+                <span class=simple>&lt;ELEMENT&gt;...&lt;/ELEMENT&gt;</span>
+                <xbe-ref class=detailed type=element-head ref="ELEMENT"></xbe-ref>
+                <slot name=after-head></slot>
+            </summary>
+
+            <div class=element-contents></div>
+            <div class=element-end>
+                &lt;/ELEMENT&gt;
+            </div>
+        </details>
+    </template>
+
+    <template id=root-element-template>
+        <div class=standalone-element>
+            <h2>Element ROOT_ELEM</h2>
+            <details class=usages-box>
+                <summary>Used by:</summary>
+                <xbe-ref type=element-usages ref=ROOT_ELEM></xbe-ref>
+            </details>
+            <xbe-collapsible-element-ref element="ELEMENT">
+            </xbe-collapsible-element-ref>
+        </div>
+    </template>
+
+    <template id=root-type-template>
+        <div class=standalone-type>
+            <h2>Type ROOT_TYPE</h2>
+            <details class=usages-box>
+                <summary>Used by:</summary>
+                <xbe-ref type=type-usages ref=ROOT_TYPE></xbe-ref>
+            </details>
+            <div class=element-head>
+                &lt;
+                <span class=sample>element</span>
+                <xbe-ref type=type-attrs ref=ROOT_TYPE></xbe-ref>
+                <span>&gt;</span>
+            </div>
+            <xbe-ref type=type-contents ref=ROOT_TYPE></xbe-ref>
+            <div class=element-end>
+                &lt;/<span class=sample>element</span>&gt;
+            </div>
+        </div>
+    </template>
+
+    <template id=root-group-template>
+        <div class=standalone-group>
+            <h2>Group ROOT_GROUP</h2>
+            <details class=usages-box>
+                <summary>Used by:</summary>
+                <xbe-ref type=group-usages ref=ROOT_GROUP></xbe-ref>
+            </details>
+            <xbe-ref type=group-contents ref=ROOT_GROUP></xbe-ref>
+        </div>
+    </template>
+
+    <template id=landing-template>
+        <div class=landing>
+            {% if ns_to_prefix or root_target_ns %}
+            <section class="landing-card landing-prefixes">
+                <details>
+                    <summary><h2>Namespaces</h2></summary>
+                    <div class=ns-grid>
+                        {% if root_target_ns and root_target_ns not in ns_to_prefix %}
+                        <div class=ns-card>
+                            <div class="ns-card-prefix default"><em>(default)</em></div>
+                            <div class=ns-card-uri>{{ root_target_ns }}</div>
+                        </div>
+                        {% endif %}
+                        {% for ns, pfx in ns_to_prefix|items|sort(attribute='1') %}
+                        <div class=ns-card>
+                            <div class=ns-card-prefix>{{ pfx }}</div>
+                            <div class=ns-card-uri>{{ ns }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+            </section>
+            {% endif %}
+
+            {% set elements = doc|xpath("xsd:element[@name]") %}
+            {% set complex_types = doc|xpath("//xsd:complexType[@name]") %}
+            {% set simple_types = doc|xpath("//xsd:simpleType[@name]") %}
+            {% set groups = doc|xpath("//xsd:group[@name]") %}
+            {% if elements or complex_types or simple_types or groups %}
+            <section class="landing-card landing-definitions">
+                <details open>
+                    <summary><h2>Schema Definitions</h2></summary>
+                    <div class=landing-definitions-grid>
+                    {% if elements %}
+                    <section>
+                        <h3>Elements</h3>
+                        <ul>
+                            {% for el in elements %}
+                                <li><a href="#element-{{ el.attrib.name }}">{{ el.attrib.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+
+                    {% if complex_types %}
+                    <section>
+                        <h3>Complex Types</h3>
+                        <ul>
+                            {% for ct in complex_types %}
+                                <li><a href="#type-{{ ct.attrib.name }}">{{ ct.attrib.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+
+                    {% if simple_types %}
+                    <section>
+                        <h3>Simple Types</h3>
+                        <ul>
+                            {% for st in simple_types %}
+                                <li><a href="#type-{{ st.attrib.name }}">{{ st.attrib.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+
+                    {% if groups %}
+                    <section>
+                        <h3>Groups</h3>
+                        <ul>
+                            {% for g in groups %}
+                                <li><a href="#group-{{ g.attrib.name }}">{{ g.attrib.name }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                    {% endif %}
+                    </div>
+                </details>
+            </section>
+            {% endif %}
+
+            <section class="landing-card landing-info">
+                <details>
+                    <summary><h2>About</h2></summary>
+                    <div class=info-grid>
+                        <div class=info-label>Source file</div>
+                        <div class=info-value><code>{{ main_xml_path.name }}</code></div>
+                        <div class=info-label>Generated on</div>
+                        <div class=info-value>{{ generated_at.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+                        {% if imported_files %}
+                        <div class=info-label>Imported files</div>
+                        <div class=info-value>
+                            {{ imported_files|length }} files:
+                            {{ imported_files|join(", ") }}
+                        </div>
+                        {% endif %}
+                        <div class=info-label>Schema stats</div>
+                        <div class=info-value>
+                            {{ doc|xpath("xsd:element[@name]")|length }} elements,
+                            {{ doc|xpath("//xsd:complexType[@name]")|length }} complex types,
+                            {{ doc|xpath("//xsd:simpleType[@name]")|length }} simple types,
+                            {{ doc|xpath("//xsd:group[@name]")|length }} groups
+                        </div>
+                        <div class=info-label>Generator</div>
+                        <div class=info-value>xsd-browser v{{ version }}</div>
+                    </div>
+                </details>
+            </section>
+
+            <footer class=landing-footer>
+                <span>Built with <a href="https://github.com/tamtamresearch/xsd-browser">xsd-browser</a> v{{ version }}</span>
+                <a href="https://www.tamtamresearch.com/">TamTam Research s.r.o.</a>
+            </footer>
+
+        </div>
+    </template>
+
+    <header>
+        <h1><a href="#" onclick="history.pushState(null, '', location.pathname); showFromHash(); return false;">{{ main_xml_path.name }}</a></h1>
+    </header>
+
+    <main>
+    </main>
+</body>
+</html>
