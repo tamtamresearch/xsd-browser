@@ -4,6 +4,29 @@ importScripts("https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js");
 
 let pyodide;
 
+function minifyHtml(html) {
+    // Split HTML into protected blocks (script, style, code, pre, textarea) and gaps.
+    // Only minify the gaps; protected content is passed through unchanged.
+    const protectedRe = /<(script|style|code|pre|textarea)\b[^>]*>[\s\S]*?<\/\1>/gi;
+    const parts = [];
+    let last = 0;
+    for (const m of html.matchAll(protectedRe)) {
+        if (m.index > last) parts.push({ text: html.slice(last, m.index), minify: true });
+        parts.push({ text: m[0], minify: false });
+        last = m.index + m[0].length;
+    }
+    if (last < html.length) parts.push({ text: html.slice(last), minify: true });
+
+    return parts.map(p => {
+        if (!p.minify) return p.text;
+        let s = p.text;
+        s = s.replace(/<!--(?!\[if)[\s\S]*?-->/g, '');
+        s = s.replace(/\s{2,}/g, ' ');
+        s = s.replace(/>\s+</g, '><');
+        return s;
+    }).join('').trim();
+}
+
 function post(type, data) {
     self.postMessage({ type, data });
 }
@@ -67,7 +90,10 @@ os.makedirs("${xsdDir}")
     post('status', `All ${filePaths.length} files extracted. Parsing XSD and rendering HTML...`);
 
     const entryPath = `${xsdDir}/${entryPoint}`;
-    const result = pyodide.globals.get("wasm").process_data(entryPath);
+    const rawHtml = pyodide.globals.get("wasm").process_data(entryPath);
+
+    post('status', 'Minifying HTML...');
+    const result = minifyHtml(rawHtml);
 
     post('result', { html: result, entryPoint });
 }
