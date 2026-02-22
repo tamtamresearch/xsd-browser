@@ -6,12 +6,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f4f7f6; margin: 0; }
-        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 400px; }
-        select, button, input { width: 100%; margin: 10px 0; padding: 10px; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box; }
+        #title { margin-top: 0; }
+        .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 400px; }
+        select, button, input { width: 100%; margin: 14px 0; padding: 10px; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box; }
         button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
         button:disabled { background: #ccc; }
         #status { font-size: 0.8rem; color: #666; text-align: center; }
-        #subtitle { font-size: 0.85rem; color: #666; margin: 0 0 8px; }
+        .file-input-row { display: flex; align-items: center; gap: 8px; margin: 14px 0; }
+        .file-input-row button { width: auto; margin: 0; padding: 8px 14px; flex-shrink: 0; }
+        #fileNameDisplay { font-size: 0.85rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #entryLabel { font-size: 0.8rem; color: #555; display: block; margin-bottom: 2px; }
+        #entryRow select { margin-top: 0; }
+        #subtitle { font-size: 0.85rem; color: #666; margin: 0 0 24px; }
         .landing-footer {
             position: fixed; bottom: 0; left: 0; right: 0;
             display: flex; justify-content: space-between; align-items: center;
@@ -26,10 +32,18 @@
 <body>
 
 <div class="card">
-    <h2>XSD Browser</h2>
-    <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files. Accepts a single .xsd file, a .zip archive, or a .tar.gz archive containing a multi-file XSD schema.</p>
-    <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" disabled>
-    <select id="entrySelect" disabled><option>Select Entry XSD...</option></select>
+    <h2 id="title">XSD Browser</h2>
+    <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files. Upload a .xsd file, or a .zip / .tar.gz archive for multi-file schemas.</p>
+    <div class="file-input-row">
+        <button type="button" id="chooseFileBtn" disabled>Choose file</button>
+        <span id="fileNameDisplay">No file chosen</span>
+    </div>
+    <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" disabled style="display:none">
+<div id="entryRow" style="display:none">
+        <label for="entrySelect" id="entryLabel">Select root XSD schema:</label>
+        <select id="entrySelect" disabled><option>Select root XSD schema</option></select>
+    </div>
+    <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 0 0 0;">
     <button id="convertBtn" disabled>Loading Python...</button>
     <div id="status">Initializing...</div>
 </div>
@@ -38,7 +52,12 @@
     const status = document.getElementById('status');
     const btn = document.getElementById('convertBtn');
     const entrySelect = document.getElementById('entrySelect');
+    const entryRow = document.getElementById('entryRow');
     const zipInput = document.getElementById('zipInput');
+    const chooseFileBtn = document.getElementById('chooseFileBtn');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+    chooseFileBtn.onclick = () => zipInput.click();
 
     const worker = new Worker('worker.js');
     let workerReady = false;
@@ -53,6 +72,7 @@
             case 'ready':
                 workerReady = true;
                 zipInput.disabled = false;
+                chooseFileBtn.disabled = false;
                 btn.innerText = "Generate HTML";
                 status.innerText = "Ready.";
                 break;
@@ -112,12 +132,11 @@
         const file = e.target.files[0];
         if (!file) return;
 
+        fileNameDisplay.textContent = file.name;
+
         if (file.name.endsWith('.xsd')) {
+            entryRow.style.display = 'none';
             entrySelect.innerHTML = "";
-            const opt = document.createElement('option');
-            opt.value = file.name;
-            opt.innerText = file.name;
-            entrySelect.appendChild(opt);
             entrySelect.disabled = true;
             btn.disabled = !workerReady;
         } else if (isTar(file)) {
@@ -134,8 +153,9 @@
                     entrySelect.appendChild(opt);
                 });
             entrySelect.disabled = false;
+            entryRow.style.display = '';
             btn.disabled = !workerReady;
-            status.innerText = "Archive listed. Select entry XSD and click Generate.";
+            status.innerText = "Archive listed. Select root XSD schema and click Generate.";
         } else {
             const zip = await JSZip.loadAsync(file);
             entrySelect.innerHTML = "";
@@ -149,6 +169,7 @@
             });
 
             entrySelect.disabled = false;
+            entryRow.style.display = '';
             btn.disabled = !workerReady;
         }
     };
@@ -163,7 +184,7 @@
             const buffer = await file.arrayBuffer();
             const files = { [file.name]: new Uint8Array(buffer) };
             status.innerText = "Sending file to worker...";
-            worker.postMessage({ type: 'convert', files, entryPoint });
+            worker.postMessage({ type: 'convert', files, entryPoint: file.name });
         } else if (isTar(file)) {
             status.innerText = "Extracting archive...";
             const files = await extractTar(file);
