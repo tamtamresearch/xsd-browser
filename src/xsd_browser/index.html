@@ -27,8 +27,8 @@
 
 <div class="card">
     <h2>XSD Browser</h2>
-    <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files. Accepts a single .xsd file or a .zip archive containing a multi-file XSD schema.</p>
-    <input type="file" id="zipInput" accept=".zip,.xsd" disabled>
+    <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files. Accepts a single .xsd file, a .zip archive, or a .tar.gz archive containing a multi-file XSD schema.</p>
+    <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" disabled>
     <select id="entrySelect" disabled><option>Select Entry XSD...</option></select>
     <button id="convertBtn" disabled>Loading Python...</button>
     <div id="status">Initializing...</div>
@@ -74,7 +74,40 @@
         }
     };
 
-    // Handle file selection: single .xsd or .zip archive
+    function isTar(file) {
+        return file.name.endsWith('.tar') || file.name.endsWith('.tar.gz') || file.name.endsWith('.tgz');
+    }
+
+    async function extractTar(file) {
+        let bytes;
+        if (file.name.endsWith('.tar.gz') || file.name.endsWith('.tgz')) {
+            const ds = new DecompressionStream('gzip');
+            file.stream().pipeTo(ds.writable);
+            bytes = new Uint8Array(await new Response(ds.readable).arrayBuffer());
+        } else {
+            bytes = new Uint8Array(await file.arrayBuffer());
+        }
+        const files = {};
+        let offset = 0;
+        while (offset + 512 <= bytes.length) {
+            const header = bytes.slice(offset, offset + 512);
+            if (header.every(b => b === 0)) break;
+            const name = new TextDecoder().decode(header.slice(0, 100)).replace(/\0.*/, '');
+            const sizeOctal = new TextDecoder().decode(header.slice(124, 136)).trim().replace(/\0.*/, '');
+            const size = parseInt(sizeOctal, 8) || 0;
+            const typeFlag = String.fromCharCode(header[156]);
+            offset += 512;
+            if (typeFlag === '0' || typeFlag === '\0') {
+                files[name] = bytes.slice(offset, offset + size);
+            } else {
+                files[name] = null; // directory
+            }
+            offset += Math.ceil(size / 512) * 512;
+        }
+        return files;
+    }
+
+    // Handle file selection: single .xsd, .zip, or .tar.gz archive
     zipInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -87,6 +120,22 @@
             entrySelect.appendChild(opt);
             entrySelect.disabled = true;
             btn.disabled = !workerReady;
+        } else if (isTar(file)) {
+            status.innerText = "Extracting archive...";
+            const allFiles = await extractTar(file);
+            entrySelect.innerHTML = "";
+            Object.keys(allFiles)
+                .filter(n => n.endsWith('.xsd'))
+                .sort()
+                .forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.innerText = name;
+                    entrySelect.appendChild(opt);
+                });
+            entrySelect.disabled = false;
+            btn.disabled = !workerReady;
+            status.innerText = "Archive listed. Select entry XSD and click Generate.";
         } else {
             const zip = await JSZip.loadAsync(file);
             entrySelect.innerHTML = "";
@@ -114,6 +163,11 @@
             const buffer = await file.arrayBuffer();
             const files = { [file.name]: new Uint8Array(buffer) };
             status.innerText = "Sending file to worker...";
+            worker.postMessage({ type: 'convert', files, entryPoint });
+        } else if (isTar(file)) {
+            status.innerText = "Extracting archive...";
+            const files = await extractTar(file);
+            status.innerText = "Sending files to worker...";
             worker.postMessage({ type: 'convert', files, entryPoint });
         } else {
             status.innerText = "Reading ZIP archive...";
