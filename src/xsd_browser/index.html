@@ -43,7 +43,7 @@
         <div class="drop-zone-primary">Drag &amp; drop a file here</div>
         <div class="drop-zone-secondary">or click to choose a .xsd, .zip, or .tar.gz file</div>
     </div>
-    <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" disabled style="display:none">
+    <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" style="display:none">
 <div id="entryRow" style="display:none">
         <label for="entrySelect" id="entryLabel">Select root XSD schema:</label>
         <select id="entrySelect" disabled><option>Select root XSD schema</option></select>
@@ -63,7 +63,7 @@
 
     let currentFile = null;
 
-    dropZone.onclick = () => { if (!zipInput.disabled) zipInput.click(); };
+    dropZone.onclick = () => zipInput.click();
 
     const worker = new Worker('worker.js');
     let workerReady = false;
@@ -77,9 +77,13 @@
                 break;
             case 'ready':
                 workerReady = true;
-                zipInput.disabled = false;
                 btn.innerText = "Generate HTML";
-                status.innerText = "Ready.";
+                if (currentFile) {
+                    btn.disabled = false;
+                    status.innerText = "Ready. Click Generate to proceed.";
+                } else {
+                    status.innerText = "Ready.";
+                }
                 break;
             case 'result':
                 const blob = new Blob([data.html], { type: 'text/html' });
