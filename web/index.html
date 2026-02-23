@@ -154,7 +154,6 @@
 
 <script>
     const status = document.getElementById('status');
-    const convertBtn = document.getElementById('convertBtn');
     const entrySelect = document.getElementById('entrySelect');
     const entryRow = document.getElementById('entryRow');
     const zipInput = document.getElementById('zipInput');
@@ -163,11 +162,14 @@
     const dropZone = document.getElementById('dropZone');
     const selectionInfo = document.getElementById('selectionInfo');
     const selectionName = document.getElementById('selectionName');
-    const previewBtn = document.getElementById('previewBtn');
 
     let currentFile = null;
     let currentFiles = null; // pre-read files dict for directory drops
     let pendingAction = 'download'; // 'download' or 'preview'
+
+    function setActionsDisabled(disabled) {
+        document.querySelectorAll('.btn-row button').forEach(b => b.disabled = disabled);
+    }
 
     function showSelection(name) {
         selectionName.textContent = name;
@@ -201,8 +203,7 @@
             case 'ready':
                 workerReady = true;
                 if (currentFile || currentFiles) {
-                    convertBtn.disabled = false;
-                    previewBtn.disabled = false;
+                    setActionsDisabled(false);
                     status.innerText = "Ready. Click Generate to proceed.";
                 } else {
                     status.innerText = "Ready.";
@@ -223,14 +224,12 @@
                     URL.revokeObjectURL(url);
                     status.innerText = "Done! Documentation downloaded.";
                 }
-                convertBtn.disabled = false;
-                previewBtn.disabled = false;
+                setActionsDisabled(false);
                 break;
             case 'error':
                 console.error(data);
                 status.innerText = `Error: ${data}`;
-                convertBtn.disabled = false;
-                previewBtn.disabled = false;
+                setActionsDisabled(false);
                 break;
         }
     };
@@ -302,8 +301,7 @@
         currentFiles = null;
         selectionInfo.style.display = 'none';
         entryRow.style.display = 'none';
-        convertBtn.disabled = true;
-        previewBtn.disabled = true;
+        setActionsDisabled(true);
         status.innerText = message;
     }
 
@@ -388,8 +386,7 @@
                 entryRow.style.display = 'none';
                 entrySelect.innerHTML = "";
                 entrySelect.disabled = true;
-                convertBtn.disabled = !workerReady;
-                previewBtn.disabled = !workerReady;
+                setActionsDisabled(!workerReady);
             } else if (isTar(file)) {
                 status.innerText = "Extracting archive...";
                 const allFiles = await extractTar(file);
@@ -421,8 +418,7 @@
 
                 entrySelect.disabled = false;
                 entryRow.style.display = '';
-                convertBtn.disabled = !workerReady;
-                previewBtn.disabled = !workerReady;
+                setActionsDisabled(!workerReady);
             }
         } catch (e) {
             resetDropZone(`Error reading file: ${e.message}`);
@@ -475,8 +471,7 @@
         pendingAction = action;
         const file = currentFile;
         const entryPoint = entrySelect.value;
-        convertBtn.disabled = true;
-        previewBtn.disabled = true;
+        setActionsDisabled(true);
 
         try {
             if (currentFiles) {
@@ -514,13 +509,12 @@
             }
         } catch (e) {
             status.innerText = `Error reading file: ${e.message}`;
-            convertBtn.disabled = false;
-            previewBtn.disabled = false;
+            setActionsDisabled(false);
         }
     }
 
-    convertBtn.onclick = () => startConversion('download');
-    previewBtn.onclick = () => startConversion('preview');
+    document.getElementById('convertBtn').onclick = () => startConversion('download');
+    document.getElementById('previewBtn').onclick = () => startConversion('preview');
 </script>
 
 <footer class="landing-footer">
