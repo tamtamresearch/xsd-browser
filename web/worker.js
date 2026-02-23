@@ -2,6 +2,9 @@
 
 importScripts("https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js");
 
+// Base path to Python source files (overridden during build)
+const SOURCES_BASE = '../src/xsd_browser/';
+
 const xsdDir = "/home/pyodide/xsd_data";
 
 let pyodide;
@@ -45,11 +48,15 @@ async function setup() {
     await micropip.install("jinja2");
 
     post('status', 'Mounting project files...');
-    const files = ['wasm.py', 'main.py', 'main.html.j2', 'main.css', 'main.js'];
-    for (const f of files) {
+    const localFiles = ['wasm.py'];
+    const sourceFiles = ['main.py', 'main.html.j2', 'main.css', 'main.js'];
+    for (const f of localFiles) {
         const resp = await fetch(f);
-        const content = await resp.text();
-        pyodide.FS.writeFile(`/home/pyodide/${f}`, content);
+        pyodide.FS.writeFile(`/home/pyodide/${f}`, await resp.text());
+    }
+    for (const f of sourceFiles) {
+        const resp = await fetch(SOURCES_BASE + f);
+        pyodide.FS.writeFile(`/home/pyodide/${f}`, await resp.text());
     }
 
     post('status', 'Importing Python modules...');

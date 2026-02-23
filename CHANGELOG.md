@@ -9,11 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - **Browser-based WASM version** — New `index.html` and `worker.js` provide a fully client-side XSD-to-HTML converter using Pyodide. Upload a ZIP of XSD files, select an entry point, and download the rendered HTML — no server required. Python runs in a Web Worker to keep the UI responsive, with live status updates throughout setup and conversion.
+- **GitHub Pages deployment** — Added GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) that automatically builds and deploys the WASM version to GitHub Pages on push to `master`.
 
 ## [0.3.0] - 2026-02-23
 
 ### Changed
 
+- **WASM files moved to `web/` directory** — `index.html`, `worker.js`, and `wasm.py` moved from `src/xsd_browser/` to `web/` to separate the browser app from the Python package. Shared source files are fetched via a configurable `SOURCES_BASE` path in `worker.js`.
 - **"Extended by" section not collapsible** — Changed from non-functional `div`+`summary` to `details`+`summary` and matched "Used by" styling.
 - **Independent state persistence for "Extended by"** — "Extended by" now has its own CSS class and localStorage key, so its open/close state persists independently from "Used by".
 - **Incomplete inheritance hierarchy for multi-level chains** — For types with multi-level inheritance (e.g. TypeC extends TypeB extends TypeA), only the direct parent's elements were shown. Now the full chain is walked recursively, with a separate labeled "Inherited from X:" section for each ancestor (oldest first). Indirect ancestors no longer leak into "Used by" sections.

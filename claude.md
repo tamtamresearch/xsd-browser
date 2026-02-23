@@ -120,19 +120,28 @@ An experimental browser-only version that runs the full Python pipeline in-brows
 ### Files
 
 ```
-src/xsd_browser/
+web/
   index.html   - UI: file picker, entry dropdown, convert button, status
   worker.js    - Web Worker: loads Pyodide, installs deps, runs Python
   wasm.py      - Thin shim: calls render_html() from main.py with minify=False
 ```
 
+The shared Python/template files (`main.py`, `main.html.j2`, `main.css`, `main.js`) remain in `src/xsd_browser/`. In dev mode, `worker.js` fetches them via the `SOURCES_BASE` constant (`../src/xsd_browser/`). The GitHub Pages build copies everything into a flat directory and patches the path to `./`.
+
 ### How to Run
 
-Serve `src/xsd_browser/` over HTTP (required — `file://` won't work due to CORS):
+Serve the project root over HTTP (required — `file://` won't work due to CORS):
 ```bash
-python -m http.server --directory src/xsd_browser
+python -m http.server
 ```
-Then open `http://localhost:8000`.
+Then open `http://localhost:8000/web/`.
+
+### Deployment
+
+GitHub Pages deployment is automated via `.github/workflows/deploy-pages.yml`. On push to `master`:
+1. Copies `web/*` and shared source files into a flat `dist/` directory
+2. Patches `SOURCES_BASE` in `worker.js` from `../src/xsd_browser/` to `./`
+3. Deploys `dist/` to GitHub Pages via `actions/deploy-pages`
 
 ### Architecture
 
