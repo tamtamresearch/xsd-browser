@@ -203,9 +203,9 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `report_${data.entryPoint.replace('.xsd', '')}.html`;
+                a.download = `docs_${data.entryPoint.replace('.xsd', '')}.html`;
                 a.click();
-                status.innerText = "Done! Report downloaded.";
+                status.innerText = "Done! Documentation downloaded.";
                 btn.disabled = false;
                 break;
             case 'error':
