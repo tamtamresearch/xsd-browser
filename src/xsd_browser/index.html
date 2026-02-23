@@ -7,7 +7,10 @@
     <style>
         body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f4f7f6; margin: 0; }
         #title { margin-top: 0; }
-        .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 400px; }
+        .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 400px; position: relative; }
+        .card.drag-over { border: 2px dashed #007bff; background: #f0f7ff; }
+        .drop-overlay { display: none; position: absolute; inset: 0; background: rgba(0, 123, 255, 0.08); border-radius: 12px; z-index: 10; align-items: center; justify-content: center; font-size: 1.1rem; color: #007bff; font-weight: bold; pointer-events: none; }
+        .card.drag-over .drop-overlay { display: flex; }
         select, button, input { width: 100%; margin: 14px 0; padding: 10px; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box; }
         button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
         button:disabled { background: #ccc; }
@@ -32,6 +35,7 @@
 <body>
 
 <div class="card">
+    <div class="drop-overlay">Drop file here</div>
     <h2 id="title">XSD Browser</h2>
     <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files. Upload a .xsd file, or a .zip / .tar.gz archive for multi-file schemas.</p>
     <div class="file-input-row">
@@ -56,6 +60,9 @@
     const zipInput = document.getElementById('zipInput');
     const chooseFileBtn = document.getElementById('chooseFileBtn');
     const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+    const card = document.querySelector('.card');
+    let currentFile = null;
 
     chooseFileBtn.onclick = () => zipInput.click();
 
@@ -128,10 +135,8 @@
     }
 
     // Handle file selection: single .xsd, .zip, or .tar.gz archive
-    zipInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
+    async function handleFile(file) {
+        currentFile = file;
         fileNameDisplay.textContent = file.name;
 
         if (file.name.endsWith('.xsd')) {
@@ -172,10 +177,44 @@
             entryRow.style.display = '';
             btn.disabled = !workerReady;
         }
+    }
+
+    zipInput.onchange = (e) => {
+        if (e.target.files[0]) handleFile(e.target.files[0]);
     };
 
+    // Drag & drop
+    let dragCounter = 0;
+
+    card.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        card.classList.add('drag-over');
+    });
+
+    card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    card.addEventListener('dragleave', () => {
+        dragCounter--;
+        if (dragCounter === 0) card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        card.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFile(file);
+    });
+
+    // Prevent browser from opening dropped files outside the card
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop', (e) => e.preventDefault());
+
     btn.onclick = async () => {
-        const file = zipInput.files[0];
+        const file = currentFile;
         const entryPoint = entrySelect.value;
         btn.disabled = true;
 
