@@ -136,49 +136,63 @@
         return files;
     }
 
+    function resetDropZone(message) {
+        currentFile = null;
+        dropZone.classList.remove('has-file');
+        dropZone.querySelector('.drop-zone-primary').textContent = 'Drag & drop a file here';
+        entryRow.style.display = 'none';
+        btn.disabled = true;
+        status.innerText = message;
+    }
+
     // Handle file selection: single .xsd, .zip, or .tar.gz archive
     async function handleFile(file) {
         currentFile = file;
         dropZone.classList.add('has-file');
         dropZone.querySelector('.drop-zone-primary').textContent = file.name;
+        status.innerText = workerReady ? "Ready. Click Generate to proceed." : "Loading Python...";
 
-        if (file.name.endsWith('.xsd')) {
-            entryRow.style.display = 'none';
-            entrySelect.innerHTML = "";
-            entrySelect.disabled = true;
-            btn.disabled = !workerReady;
-        } else if (isTar(file)) {
-            status.innerText = "Extracting archive...";
-            const allFiles = await extractTar(file);
-            entrySelect.innerHTML = "";
-            Object.keys(allFiles)
-                .filter(n => n.endsWith('.xsd'))
-                .sort()
-                .forEach(name => {
+        try {
+            if (file.name.endsWith('.xsd')) {
+                entryRow.style.display = 'none';
+                entrySelect.innerHTML = "";
+                entrySelect.disabled = true;
+                btn.disabled = !workerReady;
+            } else if (isTar(file)) {
+                status.innerText = "Extracting archive...";
+                const allFiles = await extractTar(file);
+                entrySelect.innerHTML = "";
+                Object.keys(allFiles)
+                    .filter(n => n.endsWith('.xsd'))
+                    .sort()
+                    .forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.innerText = name;
+                        entrySelect.appendChild(opt);
+                    });
+                entrySelect.disabled = false;
+                entryRow.style.display = '';
+                btn.disabled = !workerReady;
+                status.innerText = "Archive listed. Select root XSD schema and click Generate.";
+            } else {
+                const zip = await JSZip.loadAsync(file);
+                entrySelect.innerHTML = "";
+                const xsds = Object.keys(zip.files).filter(name => name.endsWith('.xsd'));
+
+                xsds.forEach(name => {
                     const opt = document.createElement('option');
                     opt.value = name;
                     opt.innerText = name;
                     entrySelect.appendChild(opt);
                 });
-            entrySelect.disabled = false;
-            entryRow.style.display = '';
-            btn.disabled = !workerReady;
-            status.innerText = "Archive listed. Select root XSD schema and click Generate.";
-        } else {
-            const zip = await JSZip.loadAsync(file);
-            entrySelect.innerHTML = "";
-            const xsds = Object.keys(zip.files).filter(name => name.endsWith('.xsd'));
 
-            xsds.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.innerText = name;
-                entrySelect.appendChild(opt);
-            });
-
-            entrySelect.disabled = false;
-            entryRow.style.display = '';
-            btn.disabled = !workerReady;
+                entrySelect.disabled = false;
+                entryRow.style.display = '';
+                btn.disabled = !workerReady;
+            }
+        } catch (e) {
+            resetDropZone(`Error reading file: ${e.message}`);
         }
     }
 
@@ -221,35 +235,40 @@
         const entryPoint = entrySelect.value;
         btn.disabled = true;
 
-        if (file.name.endsWith('.xsd')) {
-            status.innerText = "Reading XSD file...";
-            const buffer = await file.arrayBuffer();
-            const files = { [file.name]: new Uint8Array(buffer) };
-            status.innerText = "Sending file to worker...";
-            worker.postMessage({ type: 'convert', files, entryPoint: file.name });
-        } else if (isTar(file)) {
-            status.innerText = "Extracting archive...";
-            const files = await extractTar(file);
-            status.innerText = "Sending files to worker...";
-            worker.postMessage({ type: 'convert', files, entryPoint });
-        } else {
-            status.innerText = "Reading ZIP archive...";
-            const zip = await JSZip.loadAsync(file);
-            const files = {};
-            const entries = Object.entries(zip.files);
+        try {
+            if (file.name.endsWith('.xsd')) {
+                status.innerText = "Reading XSD file...";
+                const buffer = await file.arrayBuffer();
+                const files = { [file.name]: new Uint8Array(buffer) };
+                status.innerText = "Sending file to worker...";
+                worker.postMessage({ type: 'convert', files, entryPoint: file.name });
+            } else if (isTar(file)) {
+                status.innerText = "Extracting archive...";
+                const files = await extractTar(file);
+                status.innerText = "Sending files to worker...";
+                worker.postMessage({ type: 'convert', files, entryPoint });
+            } else {
+                status.innerText = "Reading ZIP archive...";
+                const zip = await JSZip.loadAsync(file);
+                const files = {};
+                const entries = Object.entries(zip.files);
 
-            for (let i = 0; i < entries.length; i++) {
-                const [path, zipEntry] = entries[i];
-                if (zipEntry.dir) {
-                    files[path] = null; // directory marker
-                } else {
-                    files[path] = await zipEntry.async("uint8array");
+                for (let i = 0; i < entries.length; i++) {
+                    const [path, zipEntry] = entries[i];
+                    if (zipEntry.dir) {
+                        files[path] = null; // directory marker
+                    } else {
+                        files[path] = await zipEntry.async("uint8array");
+                    }
+                    status.innerText = `Reading ZIP (${i + 1}/${entries.length}): ${path}`;
                 }
-                status.innerText = `Reading ZIP (${i + 1}/${entries.length}): ${path}`;
-            }
 
-            status.innerText = "Sending files to worker...";
-            worker.postMessage({ type: 'convert', files, entryPoint });
+                status.innerText = "Sending files to worker...";
+                worker.postMessage({ type: 'convert', files, entryPoint });
+            }
+        } catch (e) {
+            status.innerText = `Error reading file: ${e.message}`;
+            btn.disabled = false;
         }
     };
 </script>
