@@ -72,6 +72,20 @@ The repository includes DATEX II v3 Profile schemas for testing. To generate doc
 xsd-browser samples/DATEXII_3_Profile/DATEXII_3_D2Payload.xsd DATEXII_3_D2Payload.html
 ```
 
+## Browser version (WASM)
+
+An experimental browser-only version runs the full Python pipeline client-side via
+[Pyodide](https://pyodide.org/) — no server or Python installation required after initial load.
+
+A hosted version is available at the GitHub Pages deployment. To run it locally, serve the
+project over HTTP:
+
+```bash
+python -m http.server
+```
+
+Then open `http://localhost:8000/web/`.
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
