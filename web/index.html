@@ -14,15 +14,38 @@
         #status { font-size: 0.8rem; color: #666; text-align: center; }
         .drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 24px 16px; text-align: center; cursor: pointer; background: #fafbfc; margin: 14px 0; transition: border-color 0.2s, background 0.2s; }
         .drop-zone:hover { border-color: #999; background: #f0f2f4; }
-        .drop-zone.drag-over, .drop-zone.has-file.drag-over { border-color: #007bff; border-style: dashed; background: #f0f7ff; }
-        .drop-zone.has-file { border-style: solid; border-color: #28a745; background: #f0faf3; }
+        .drop-zone.drag-over { border-color: #007bff; border-style: dashed; background: #f0f7ff; }
         .drop-zone-primary { font-size: 0.95rem; color: #333; margin-bottom: 4px; }
         .drop-zone-secondary { font-size: 0.8rem; color: #999; }
-        .drop-zone.has-file .drop-zone-primary { color: #28a745; font-weight: bold; }
         .drop-zone-secondary a { color: #666; }
-        .drop-zone-secondary a:hover { color: #333; }
-        .drop-zone.has-file .drop-zone-secondary { display: none; }
-        #entryLabel { font-size: 0.8rem; color: #555; display: block; margin-bottom: 2px; }
+        .drop-zone-secondary a:hover {
+            color: #333;
+        }
+        #selectionInfo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            margin: 0 0 10px;
+            font-size: 0.82rem;
+            color: #28a745;
+            font-weight: 600;
+            border: 1px dashed #28a745;
+            background: transparent;
+            border-radius: 6px;
+        }
+        #selectionName {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #entryLabel {
+            font-size: 0.8rem;
+            color: #555;
+            display: block;
+            margin-bottom: 2px;
+        }
         #entryRow select { margin-top: 0; }
         #subtitle { font-size: 0.85rem; color: #666; margin: 0 0 24px; }
         .landing-footer {
@@ -47,6 +70,9 @@
     </div>
     <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" style="display:none">
     <input type="file" id="folderInput" webkitdirectory style="display:none">
+    <div id="selectionInfo" style="display:none">
+        <span id="selectionName"></span>
+    </div>
 <div id="entryRow" style="display:none">
         <label for="entrySelect" id="entryLabel">Select root XSD schema:</label>
         <select id="entrySelect" disabled><option>Select root XSD schema</option></select>
@@ -65,9 +91,16 @@
     const folderInput = document.getElementById('folderInput');
     const folderLink = document.getElementById('folderLink');
     const dropZone = document.getElementById('dropZone');
+    const selectionInfo = document.getElementById('selectionInfo');
+    const selectionName = document.getElementById('selectionName');
 
     let currentFile = null;
     let currentFiles = null; // pre-read files dict for directory drops
+
+    function showSelection(name) {
+        selectionName.textContent = name;
+        selectionInfo.style.display = 'flex';
+    }
 
     dropZone.onclick = () => zipInput.click();
 
@@ -185,8 +218,8 @@
 
     function resetDropZone(message) {
         currentFile = null;
-        dropZone.classList.remove('has-file');
-        dropZone.querySelector('.drop-zone-primary').textContent = 'Drag & drop a file here';
+        currentFiles = null;
+        selectionInfo.style.display = 'none';
         entryRow.style.display = 'none';
         btn.disabled = true;
         status.innerText = message;
@@ -197,8 +230,7 @@
         currentFiles = null;
         // Derive folder name from the common path prefix
         const folderName = fileList[0].webkitRelativePath.split('/')[0];
-        dropZone.classList.add('has-file');
-        dropZone.querySelector('.drop-zone-primary').textContent = folderName + '/';
+        showSelection(folderName + '/');
         status.innerText = "Reading folder...";
 
         try {
@@ -235,8 +267,7 @@
     async function handleDirectory(entry) {
         currentFile = null;
         currentFiles = null;
-        dropZone.classList.add('has-file');
-        dropZone.querySelector('.drop-zone-primary').textContent = entry.name + '/';
+        showSelection(entry.name + '/');
         status.innerText = "Reading folder...";
 
         try {
@@ -267,8 +298,7 @@
     async function handleFile(file) {
         currentFile = file;
         currentFiles = null;
-        dropZone.classList.add('has-file');
-        dropZone.querySelector('.drop-zone-primary').textContent = file.name;
+        showSelection(file.name);
         status.innerText = workerReady ? "Ready. Click Generate to proceed." : "Loading Python...";
 
         try {
