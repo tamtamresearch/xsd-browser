@@ -8,16 +8,18 @@
         body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f4f7f6; margin: 0; }
         #title { margin-top: 0; }
         .card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 400px; position: relative; }
-        .card.drag-over { border: 2px dashed #007bff; background: #f0f7ff; }
-        .drop-overlay { display: none; position: absolute; inset: 0; background: rgba(0, 123, 255, 0.08); border-radius: 12px; z-index: 10; align-items: center; justify-content: center; font-size: 1.1rem; color: #007bff; font-weight: bold; pointer-events: none; }
-        .card.drag-over .drop-overlay { display: flex; }
         select, button, input { width: 100%; margin: 14px 0; padding: 10px; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box; }
         button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
         button:disabled { background: #ccc; }
         #status { font-size: 0.8rem; color: #666; text-align: center; }
-        .file-input-row { display: flex; align-items: center; gap: 8px; margin: 14px 0; }
-        .file-input-row button { width: auto; margin: 0; padding: 8px 14px; flex-shrink: 0; }
-        #fileNameDisplay { font-size: 0.85rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 24px 16px; text-align: center; cursor: pointer; background: #fafbfc; margin: 14px 0; transition: border-color 0.2s, background 0.2s; }
+        .drop-zone:hover { border-color: #999; background: #f0f2f4; }
+        .drop-zone.drag-over, .drop-zone.has-file.drag-over { border-color: #007bff; border-style: dashed; background: #f0f7ff; }
+        .drop-zone.has-file { border-style: solid; border-color: #28a745; background: #f0faf3; }
+        .drop-zone-primary { font-size: 0.95rem; color: #333; margin-bottom: 4px; }
+        .drop-zone-secondary { font-size: 0.8rem; color: #999; }
+        .drop-zone.has-file .drop-zone-primary { color: #28a745; font-weight: bold; }
+        .drop-zone.has-file .drop-zone-secondary { display: none; }
         #entryLabel { font-size: 0.8rem; color: #555; display: block; margin-bottom: 2px; }
         #entryRow select { margin-top: 0; }
         #subtitle { font-size: 0.85rem; color: #666; margin: 0 0 24px; }
@@ -35,12 +37,11 @@
 <body>
 
 <div class="card">
-    <div class="drop-overlay">Drop file here</div>
     <h2 id="title">XSD Browser</h2>
-    <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files. Upload a .xsd file, or a .zip / .tar.gz archive for multi-file schemas.</p>
-    <div class="file-input-row">
-        <button type="button" id="chooseFileBtn" disabled>Choose file</button>
-        <span id="fileNameDisplay">No file chosen</span>
+    <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files.</p>
+    <div class="drop-zone" id="dropZone">
+        <div class="drop-zone-primary">Drag &amp; drop a file here</div>
+        <div class="drop-zone-secondary">or click to choose a .xsd, .zip, or .tar.gz file</div>
     </div>
     <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" disabled style="display:none">
 <div id="entryRow" style="display:none">
@@ -58,13 +59,11 @@
     const entrySelect = document.getElementById('entrySelect');
     const entryRow = document.getElementById('entryRow');
     const zipInput = document.getElementById('zipInput');
-    const chooseFileBtn = document.getElementById('chooseFileBtn');
-    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const dropZone = document.getElementById('dropZone');
 
-    const card = document.querySelector('.card');
     let currentFile = null;
 
-    chooseFileBtn.onclick = () => zipInput.click();
+    dropZone.onclick = () => { if (!zipInput.disabled) zipInput.click(); };
 
     const worker = new Worker('worker.js');
     let workerReady = false;
@@ -79,7 +78,6 @@
             case 'ready':
                 workerReady = true;
                 zipInput.disabled = false;
-                chooseFileBtn.disabled = false;
                 btn.innerText = "Generate HTML";
                 status.innerText = "Ready.";
                 break;
@@ -137,7 +135,8 @@
     // Handle file selection: single .xsd, .zip, or .tar.gz archive
     async function handleFile(file) {
         currentFile = file;
-        fileNameDisplay.textContent = file.name;
+        dropZone.classList.add('has-file');
+        dropZone.querySelector('.drop-zone-primary').textContent = file.name;
 
         if (file.name.endsWith('.xsd')) {
             entryRow.style.display = 'none';
@@ -186,25 +185,25 @@
     // Drag & drop
     let dragCounter = 0;
 
-    card.addEventListener('dragenter', (e) => {
+    dropZone.addEventListener('dragenter', (e) => {
         e.preventDefault();
         dragCounter++;
-        card.classList.add('drag-over');
+        dropZone.classList.add('drag-over');
     });
 
-    card.addEventListener('dragover', (e) => {
+    dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
     });
 
-    card.addEventListener('dragleave', () => {
+    dropZone.addEventListener('dragleave', () => {
         dragCounter--;
-        if (dragCounter === 0) card.classList.remove('drag-over');
+        if (dragCounter === 0) dropZone.classList.remove('drag-over');
     });
 
-    card.addEventListener('drop', (e) => {
+    dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dragCounter = 0;
-        card.classList.remove('drag-over');
+        dropZone.classList.remove('drag-over');
         const file = e.dataTransfer.files[0];
         if (file) handleFile(file);
     });
