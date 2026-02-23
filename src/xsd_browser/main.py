@@ -139,9 +139,9 @@ class ImportResolver:
             try:
                 include_doc = lxml.etree.parse(include_path)
             except OSError:
-                logger.error(f"Cannot read imported schema file: {include_path}")
-                logger.error(f"Referenced from: {path}")
-                sys.exit(1)
+                raise RuntimeError(
+                    f"Cannot read imported schema file: {include_path}\nReferenced from: {path}"
+                ) from None
             include_schema = xpath_one(include_doc, "//xsd:schema")
 
             # Collect prefixes from imported schema into global registry
@@ -378,7 +378,11 @@ def main():
     else:
         output_path = None
 
-    output = render_html(input_path, minify=not args.no_minify)
+    try:
+        output = render_html(input_path, minify=not args.no_minify)
+    except RuntimeError as e:
+        logger.error(str(e))
+        sys.exit(1)
 
     if output_path is None:
         logger.info("Writing to stdout...")

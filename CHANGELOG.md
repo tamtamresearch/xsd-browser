@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
+- **WASM: Clean error messages on conversion failure** — Python exceptions are now caught inside `process_data()` and returned as a result dict instead of propagating as a Pyodide `PythonError`. The worker receives only the exception message string, strips the internal VFS path prefix, and displays it without any traceback noise.
 - **Inherited elements missing for types using complexContent/extension** ([#6](https://github.com/TamTamResearch/xsd-browser/issues/6)) — Types extending a base that itself uses `<xs:complexContent><xs:extension>` (e.g. `HierarchyElementGeneral` extending `fac:Facility`) were missing the base type's own elements in the "Inherited from" section.
 
 ## [0.2.0] - 2026-02-11

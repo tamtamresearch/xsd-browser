@@ -2,6 +2,8 @@
 
 importScripts("https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js");
 
+const xsdDir = "/home/pyodide/xsd_data";
+
 let pyodide;
 
 function minifyHtml(html) {
@@ -57,8 +59,6 @@ async function setup() {
 }
 
 async function convert(files, entryPoint) {
-    const xsdDir = "/home/pyodide/xsd_data";
-
     // Clean previous run
     post('status', 'Cleaning virtual filesystem...');
     await pyodide.runPythonAsync(`
@@ -90,7 +90,9 @@ os.makedirs("${xsdDir}")
     post('status', `All ${filePaths.length} files extracted. Parsing XSD and rendering HTML...`);
 
     const entryPath = `${xsdDir}/${entryPoint}`;
-    const rawHtml = pyodide.globals.get("wasm").process_data(entryPath);
+    const pyResult = pyodide.globals.get("wasm").process_data(entryPath).toJs({dict_converter: Object.fromEntries});
+    if (!pyResult.ok) throw new Error(pyResult.error);
+    const rawHtml = pyResult.html;
 
     post('status', 'Minifying HTML...');
     const result = minifyHtml(rawHtml);
@@ -105,7 +107,10 @@ self.onmessage = async (e) => {
         try {
             await convert(files, entryPoint);
         } catch (err) {
-            post('error', err.message || String(err));
+            let msg = err.message || String(err);
+            // Strip internal VFS path prefix from file references
+            msg = msg.replaceAll(xsdDir + '/', '');
+            post('error', msg);
         }
     }
 };
