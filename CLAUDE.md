@@ -184,6 +184,10 @@ All formats produce the same `files` dict sent to the worker's `convert` message
 - Worker setup takes 30–60 seconds on first load (Pyodide + lxml download)
 - The file input is disabled until the worker posts `ready`
 
+## Shell / Paths
+
+- Always use **relative paths** in shell commands. Do not construct absolute paths from the working directory string — backslash-underscore sequences in Windows paths are easily misread as a single directory name.
+
 ## Git Commits
 
 - Do NOT add `Co-Authored-By` signatures to commit messages
