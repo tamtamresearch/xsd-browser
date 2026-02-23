@@ -19,6 +19,8 @@
         .drop-zone-primary { font-size: 0.95rem; color: #333; margin-bottom: 4px; }
         .drop-zone-secondary { font-size: 0.8rem; color: #999; }
         .drop-zone.has-file .drop-zone-primary { color: #28a745; font-weight: bold; }
+        .drop-zone-secondary a { color: #666; }
+        .drop-zone-secondary a:hover { color: #333; }
         .drop-zone.has-file .drop-zone-secondary { display: none; }
         #entryLabel { font-size: 0.8rem; color: #555; display: block; margin-bottom: 2px; }
         #entryRow select { margin-top: 0; }
@@ -41,9 +43,10 @@
     <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files.</p>
     <div class="drop-zone" id="dropZone">
         <div class="drop-zone-primary">Drag &amp; drop a file here</div>
-        <div class="drop-zone-secondary">or click to choose a .xsd, .zip, or .tar.gz file</div>
+        <div class="drop-zone-secondary">or click to choose a file, or <a href="#" id="folderLink">choose a folder</a></div>
     </div>
     <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" style="display:none">
+    <input type="file" id="folderInput" webkitdirectory style="display:none">
 <div id="entryRow" style="display:none">
         <label for="entrySelect" id="entryLabel">Select root XSD schema:</label>
         <select id="entrySelect" disabled><option>Select root XSD schema</option></select>
@@ -59,11 +62,26 @@
     const entrySelect = document.getElementById('entrySelect');
     const entryRow = document.getElementById('entryRow');
     const zipInput = document.getElementById('zipInput');
+    const folderInput = document.getElementById('folderInput');
+    const folderLink = document.getElementById('folderLink');
     const dropZone = document.getElementById('dropZone');
 
     let currentFile = null;
+    let currentFiles = null; // pre-read files dict for directory drops
 
     dropZone.onclick = () => zipInput.click();
+
+    folderLink.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        folderInput.click();
+    };
+
+    folderInput.onchange = () => {
+        const files = folderInput.files;
+        if (!files || files.length === 0) return;
+        handleFolderFiles(files);
+    };
 
     const worker = new Worker('worker.js');
     let workerReady = false;
@@ -78,7 +96,7 @@
             case 'ready':
                 workerReady = true;
                 btn.innerText = "Generate HTML";
-                if (currentFile) {
+                if (currentFile || currentFiles) {
                     btn.disabled = false;
                     status.innerText = "Ready. Click Generate to proceed.";
                 } else {
@@ -136,6 +154,35 @@
         return files;
     }
 
+    function readEntryAsFile(fileEntry) {
+        return new Promise((resolve, reject) => fileEntry.file(resolve, reject));
+    }
+
+    async function readDirectoryEntry(dirEntry) {
+        const files = {};
+        const queue = [dirEntry];
+        // Strip the top-level directory name so paths are relative
+        const prefix = dirEntry.fullPath + '/';
+        while (queue.length > 0) {
+            const entry = queue.shift();
+            if (entry.isFile) {
+                const file = await readEntryAsFile(entry);
+                const relativePath = entry.fullPath.startsWith(prefix)
+                    ? entry.fullPath.slice(prefix.length) : entry.fullPath.slice(1);
+                files[relativePath] = new Uint8Array(await file.arrayBuffer());
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                // readEntries may return partial results, must call until empty
+                let batch;
+                do {
+                    batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+                    for (const child of batch) queue.push(child);
+                } while (batch.length > 0);
+            }
+        }
+        return files;
+    }
+
     function resetDropZone(message) {
         currentFile = null;
         dropZone.classList.remove('has-file');
@@ -145,9 +192,81 @@
         status.innerText = message;
     }
 
+    async function handleFolderFiles(fileList) {
+        currentFile = null;
+        currentFiles = null;
+        // Derive folder name from the common path prefix
+        const folderName = fileList[0].webkitRelativePath.split('/')[0];
+        dropZone.classList.add('has-file');
+        dropZone.querySelector('.drop-zone-primary').textContent = folderName + '/';
+        status.innerText = "Reading folder...";
+
+        try {
+            const allFiles = {};
+            for (const file of fileList) {
+                // webkitRelativePath is "folderName/sub/path.xsd" — strip the folder prefix
+                const relativePath = file.webkitRelativePath.split('/').slice(1).join('/');
+                if (relativePath) {
+                    allFiles[relativePath] = new Uint8Array(await file.arrayBuffer());
+                }
+            }
+            currentFiles = allFiles;
+            entrySelect.innerHTML = "";
+            const xsds = Object.keys(allFiles).filter(n => n.endsWith('.xsd')).sort();
+            if (xsds.length === 0) {
+                resetDropZone("No .xsd files found in the folder.");
+                return;
+            }
+            xsds.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                entrySelect.appendChild(opt);
+            });
+            entrySelect.disabled = false;
+            entryRow.style.display = '';
+            btn.disabled = !workerReady;
+            status.innerText = "Folder listed. Select root XSD schema and click Generate.";
+        } catch (e) {
+            resetDropZone(`Error reading folder: ${e.message}`);
+        }
+    }
+
+    async function handleDirectory(entry) {
+        currentFile = null;
+        currentFiles = null;
+        dropZone.classList.add('has-file');
+        dropZone.querySelector('.drop-zone-primary').textContent = entry.name + '/';
+        status.innerText = "Reading folder...";
+
+        try {
+            const allFiles = await readDirectoryEntry(entry);
+            currentFiles = allFiles;
+            entrySelect.innerHTML = "";
+            const xsds = Object.keys(allFiles).filter(n => n.endsWith('.xsd')).sort();
+            if (xsds.length === 0) {
+                resetDropZone("No .xsd files found in the folder.");
+                return;
+            }
+            xsds.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                entrySelect.appendChild(opt);
+            });
+            entrySelect.disabled = false;
+            entryRow.style.display = '';
+            btn.disabled = !workerReady;
+            status.innerText = "Folder listed. Select root XSD schema and click Generate.";
+        } catch (e) {
+            resetDropZone(`Error reading folder: ${e.message}`);
+        }
+    }
+
     // Handle file selection: single .xsd, .zip, or .tar.gz archive
     async function handleFile(file) {
         currentFile = file;
+        currentFiles = null;
         dropZone.classList.add('has-file');
         dropZone.querySelector('.drop-zone-primary').textContent = file.name;
         status.innerText = workerReady ? "Ready. Click Generate to proceed." : "Loading Python...";
@@ -222,6 +341,14 @@
         e.preventDefault();
         dragCounter = 0;
         dropZone.classList.remove('drag-over');
+        const item = e.dataTransfer.items && e.dataTransfer.items[0];
+        if (item && item.webkitGetAsEntry) {
+            const entry = item.webkitGetAsEntry();
+            if (entry && entry.isDirectory) {
+                handleDirectory(entry);
+                return;
+            }
+        }
         const file = e.dataTransfer.files[0];
         if (file) handleFile(file);
     });
@@ -236,7 +363,10 @@
         btn.disabled = true;
 
         try {
-            if (file.name.endsWith('.xsd')) {
+            if (currentFiles) {
+                status.innerText = "Sending files to worker...";
+                worker.postMessage({ type: 'convert', files: currentFiles, entryPoint });
+            } else if (file.name.endsWith('.xsd')) {
                 status.innerText = "Reading XSD file...";
                 const buffer = await file.arrayBuffer();
                 const files = { [file.name]: new Uint8Array(buffer) };
