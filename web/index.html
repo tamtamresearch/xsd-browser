@@ -118,6 +118,11 @@
         .landing-footer a { color: #cbd5e1; text-decoration: none; }
         .landing-footer a:hover { color: #fff; text-decoration: underline; }
 
+        .btn-row { display: flex; gap: 8px; margin: 12px 0; }
+        .btn-row button { margin: 0; }
+        #convertBtn { flex: 1; }
+        #previewBtn { width: fit-content; flex: none; }
+
         hr { border: none; border-top: 1px solid #e0e0e0; margin: 10px 0; }
     </style>
 </head>
@@ -136,17 +141,20 @@
         <span id="selectionName"></span>
     </div>
     <div id="entryRow" style="display:none">
-        <label for="entrySelect" id="entryLabel">Select root XSD schema:</label>
-        <select id="entrySelect" disabled><option>Select root XSD schema</option></select>
+        <label for="entrySelect" id="entryLabel">Select root XML schema:</label>
+        <select id="entrySelect" disabled><option>Select root XML schema</option></select>
     </div>
     <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 0 0 0;">
-    <button id="convertBtn" disabled>Loading Python...</button>
+    <div class="btn-row">
+        <button id="convertBtn" disabled>Generate Documentation</button>
+        <button id="previewBtn" disabled>Preview...</button>
+    </div>
     <div id="status">Initializing...</div>
 </div>
 
 <script>
     const status = document.getElementById('status');
-    const btn = document.getElementById('convertBtn');
+    const convertBtn = document.getElementById('convertBtn');
     const entrySelect = document.getElementById('entrySelect');
     const entryRow = document.getElementById('entryRow');
     const zipInput = document.getElementById('zipInput');
@@ -155,9 +163,11 @@
     const dropZone = document.getElementById('dropZone');
     const selectionInfo = document.getElementById('selectionInfo');
     const selectionName = document.getElementById('selectionName');
+    const previewBtn = document.getElementById('previewBtn');
 
     let currentFile = null;
     let currentFiles = null; // pre-read files dict for directory drops
+    let pendingAction = 'download'; // 'download' or 'preview'
 
     function showSelection(name) {
         selectionName.textContent = name;
@@ -190,9 +200,9 @@
                 break;
             case 'ready':
                 workerReady = true;
-                btn.innerText = "Generate HTML";
                 if (currentFile || currentFiles) {
-                    btn.disabled = false;
+                    convertBtn.disabled = false;
+                    previewBtn.disabled = false;
                     status.innerText = "Ready. Click Generate to proceed.";
                 } else {
                     status.innerText = "Ready.";
@@ -201,17 +211,26 @@
             case 'result':
                 const blob = new Blob([data.html], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `docs_${data.entryPoint.replace('.xsd', '')}.html`;
-                a.click();
-                status.innerText = "Done! Documentation downloaded.";
-                btn.disabled = false;
+                if (pendingAction === 'preview') {
+                    window.open(url, '_blank');
+                    URL.revokeObjectURL(url);
+                    status.innerText = "Done! Documentation opened in new tab.";
+                } else {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `docs_${data.entryPoint.replace('.xsd', '')}.html`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    status.innerText = "Done! Documentation downloaded.";
+                }
+                convertBtn.disabled = false;
+                previewBtn.disabled = false;
                 break;
             case 'error':
                 console.error(data);
                 status.innerText = `Error: ${data}`;
-                btn.disabled = false;
+                convertBtn.disabled = false;
+                previewBtn.disabled = false;
                 break;
         }
     };
@@ -283,7 +302,8 @@
         currentFiles = null;
         selectionInfo.style.display = 'none';
         entryRow.style.display = 'none';
-        btn.disabled = true;
+        convertBtn.disabled = true;
+        previewBtn.disabled = true;
         status.innerText = message;
     }
 
@@ -319,8 +339,8 @@
             });
             entrySelect.disabled = false;
             entryRow.style.display = '';
-            btn.disabled = !workerReady;
-            status.innerText = "Folder listed. Select root XSD schema and click Generate.";
+            setActionsDisabled(!workerReady);
+            status.innerText = "Folder listed. Select root XML schema and click Generate.";
         } catch (e) {
             resetDropZone(`Error reading folder: ${e.message}`);
         }
@@ -349,8 +369,8 @@
             });
             entrySelect.disabled = false;
             entryRow.style.display = '';
-            btn.disabled = !workerReady;
-            status.innerText = "Folder listed. Select root XSD schema and click Generate.";
+            setActionsDisabled(!workerReady);
+            status.innerText = "Folder listed. Select root XML schema and click Generate.";
         } catch (e) {
             resetDropZone(`Error reading folder: ${e.message}`);
         }
@@ -368,7 +388,8 @@
                 entryRow.style.display = 'none';
                 entrySelect.innerHTML = "";
                 entrySelect.disabled = true;
-                btn.disabled = !workerReady;
+                convertBtn.disabled = !workerReady;
+                previewBtn.disabled = !workerReady;
             } else if (isTar(file)) {
                 status.innerText = "Extracting archive...";
                 const allFiles = await extractTar(file);
@@ -384,8 +405,8 @@
                     });
                 entrySelect.disabled = false;
                 entryRow.style.display = '';
-                btn.disabled = !workerReady;
-                status.innerText = "Archive listed. Select root XSD schema and click Generate.";
+                setActionsDisabled(!workerReady);
+                status.innerText = "Archive listed. Select root XML schema and click Generate.";
             } else {
                 const zip = await JSZip.loadAsync(file);
                 entrySelect.innerHTML = "";
@@ -400,7 +421,8 @@
 
                 entrySelect.disabled = false;
                 entryRow.style.display = '';
-                btn.disabled = !workerReady;
+                convertBtn.disabled = !workerReady;
+                previewBtn.disabled = !workerReady;
             }
         } catch (e) {
             resetDropZone(`Error reading file: ${e.message}`);
@@ -449,10 +471,12 @@
     document.addEventListener('dragover', (e) => e.preventDefault());
     document.addEventListener('drop', (e) => e.preventDefault());
 
-    btn.onclick = async () => {
+    async function startConversion(action) {
+        pendingAction = action;
         const file = currentFile;
         const entryPoint = entrySelect.value;
-        btn.disabled = true;
+        convertBtn.disabled = true;
+        previewBtn.disabled = true;
 
         try {
             if (currentFiles) {
@@ -490,9 +514,13 @@
             }
         } catch (e) {
             status.innerText = `Error reading file: ${e.message}`;
-            btn.disabled = false;
+            convertBtn.disabled = false;
+            previewBtn.disabled = false;
         }
-    };
+    }
+
+    convertBtn.onclick = () => startConversion('download');
+    previewBtn.onclick = () => startConversion('preview');
 </script>
 
 <footer class="landing-footer">
