@@ -11,6 +11,7 @@
             --border-color: #ddd;
             --text-main: #333;
             --text-muted: #666;
+            --text-muted-more: rgba(102, 102, 102, 0.6);
             --bg-light: #f4f7f6;
         }
 
@@ -34,7 +35,9 @@
         }
 
         #title { margin: 0 0 0.5rem 0; }
-        #subtitle { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 16px; }
+        .subtitle { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+        .subtitle p { margin: 0; }
+        .subtitle .note { font-size: 0.75rem; color: var(--text-muted-more); margin-top: 4px; }
 
         /* Grouped shared styles */
         select, button, input {
@@ -130,7 +133,10 @@
 
 <div class="card">
     <h2 id="title">XSD Browser</h2>
-    <p id="subtitle">Generate interactive, single-page HTML documentation from XSD (XML Schema) files.</p>
+    <div class="subtitle">
+        <p>Generate interactive, single-file HTML documentation from XSD (XML Schema) files.</p>
+        <p class="note">All processing happens locally — your data never leaves your browser.</p>
+    </div>
     <div class="drop-zone" id="dropZone">
         <div class="drop-zone-primary">Drag &amp; drop here</div>
         <div class="drop-zone-secondary">.xsd, .zip, .tar.gz file or folder</div>
