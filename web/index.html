@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>XSD Browser</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -18,8 +19,7 @@
         body {
             font-family: sans-serif;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
             min-height: 100vh;
             background: var(--bg-light);
             margin: 0;
@@ -30,7 +30,9 @@
             padding: 1.5rem;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 400px;
+            max-width: 400px;
+            width: 100%;
+            margin: 16px;
             position: relative;
         }
 
@@ -109,9 +111,15 @@
             padding: 8px;
         }
 
+        .card-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* Footer */
         .landing-footer {
-            position: fixed; bottom: 0; left: 0; right: 0;
             display: flex; justify-content: space-between; align-items: center;
             background-color: #2c3e50;
             padding: 10px 16px;
@@ -122,16 +130,21 @@
         .landing-footer a:hover { color: #fff; text-decoration: underline; }
         .build-version { font-size: 11px; opacity: 0.6; }
 
-        .btn-row { display: flex; gap: 8px; margin: 12px 0; }
-        .btn-row button { margin: 0; }
-        #convertBtn { flex: 1; }
-        #previewBtn { width: fit-content; flex: none; }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .btn-row button { margin: 0; flex: 1; min-width: 120px; }
+        #convertBtn { flex: 2; }
 
         hr { border: none; border-top: 1px solid #e0e0e0; margin: 10px 0; }
+
+        @media (max-width: 480px) {
+            .card { padding: 1rem; }
+            .landing-footer { flex-direction: column; gap: 4px; text-align: center; }
+        }
     </style>
 </head>
 <body>
 
+<div class="card-wrapper">
 <div class="card">
     <h2 id="title">XSD Browser</h2>
     <div class="subtitle">
@@ -158,6 +171,7 @@
         <button id="previewBtn" disabled>Preview...</button>
     </div>
     <div id="status">Initializing...</div>
+</div>
 </div>
 
 <script>
