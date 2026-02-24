@@ -8,8 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
-- **Browser-based WASM version** — New `index.html` and `worker.js` provide a fully client-side XSD-to-HTML converter using Pyodide. Upload a ZIP of XSD files, select an entry point, and download the rendered HTML — no server required. Python runs in a Web Worker to keep the UI responsive, with live status updates throughout setup and conversion.
+- **Browser-based WASM version** — Fully client-side XSD-to-HTML converter using Pyodide. Python runs in a Web Worker with live status updates — no server required after initial load.
+- **WASM: Drag & drop file upload with styled drop zone** — Files can be dropped or selected via a styled drop zone. Supports folder drop and folder picker for selecting entire schema directories.
+- **WASM: Multiple archive format support** — Accepts `.zip`, `.tar`, `.tar.gz`/`.tgz` archives and individual `.xsd` files.
+- **WASM: Preview button** — Opens generated documentation in a new browser tab without downloading.
+- **WASM: JS-based HTML minifier** — Minifies generated HTML in the worker since `minify-html` is unavailable in Pyodide.
+- **WASM: Build version in footer** — Shows git tag or short commit SHA, license mention, and privacy note.
+- **WASM: Mobile-compatible layout** — Landing page adapts to mobile screen sizes.
 - **GitHub Pages deployment** — Added GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) that automatically builds and deploys the WASM version to GitHub Pages on push to `master`.
+
+### Fixed
+
+- **WASM: Race condition when file dropped before worker ready** — Files dropped before Pyodide initialization completed could be lost.
+- **WASM: Error handling for invalid/corrupt files** — Invalid or corrupt archive files now show clean error messages instead of crashing.
 
 ## [0.3.0] - 2026-02-23
 
