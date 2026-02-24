@@ -32,6 +32,12 @@ jobs:
           cp src/xsd_browser/main.css dist/
           cp src/xsd_browser/main.js dist/
           sed -i "s|../src/xsd_browser/|./|g" dist/worker.js
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            BUILD_VERSION="$GITHUB_REF_NAME"
+          else
+            BUILD_VERSION="commit ${GITHUB_SHA:0:7}"
+          fi
+          sed -i "s|__BUILD_VERSION__|${BUILD_VERSION}|g" dist/index.html
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
