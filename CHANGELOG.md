@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - **Browser-based WASM version** — Fully client-side XSD-to-HTML converter using Pyodide. Python runs in a Web Worker with live status updates — no server required after initial load.
-- **WASM: Drag & drop file upload with styled drop zone** — Files can be dropped or selected via a styled drop zone. Supports folder drop and folder picker for selecting entire schema directories.
+- **WASM: Drag & drop file upload with styled drop zone** — Files can be dropped or selected via a styled drop zone. Supports folder drop and folder picker for selecting entire schema directories. Multiple files can be dropped or selected simultaneously and are treated as a flat collection.
 - **WASM: Multiple archive format support** — Accepts `.zip`, `.tar`, `.tar.gz`/`.tgz` archives and individual `.xsd` files.
 - **WASM: Preview button** — Opens generated documentation in a new browser tab without downloading.
 - **WASM: JS-based HTML minifier** — Minifies generated HTML in the worker since `minify-html` is unavailable in Pyodide.

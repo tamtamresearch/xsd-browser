@@ -153,10 +153,10 @@
     </div>
     <div class="drop-zone" id="dropZone">
         <div class="drop-zone-primary">Drag &amp; drop here</div>
-        <div class="drop-zone-secondary">.xsd, .zip, .tar.gz file or folder</div>
+        <div class="drop-zone-secondary">.xsd, .zip, .tar.gz file, multiple .xsd files, or folder</div>
         <div class="drop-zone-secondary">or click to choose a file, or <a href="#" id="folderLink">choose a folder</a></div>
     </div>
-    <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" style="display:none">
+    <input type="file" id="zipInput" accept=".zip,.xsd,.tar,.tar.gz,.gz,.tgz" multiple style="display:none">
     <input type="file" id="folderInput" webkitdirectory style="display:none">
     <div id="selectionInfo" style="display:none">
         <span id="selectionName"></span>
@@ -345,20 +345,7 @@
                 }
             }
             currentFiles = allFiles;
-            entrySelect.innerHTML = "";
-            const xsds = Object.keys(allFiles).filter(n => n.endsWith('.xsd')).sort();
-            if (xsds.length === 0) {
-                resetDropZone("No .xsd files found in the folder.");
-                return;
-            }
-            xsds.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.innerText = name;
-                entrySelect.appendChild(opt);
-            });
-            entrySelect.disabled = false;
-            entryRow.style.display = '';
+            if (!populateEntrySelect(allFiles)) return;
             setActionsDisabled(!workerReady);
             status.innerText = "Folder listed. Select root XML schema and click Generate.";
         } catch (e) {
@@ -375,24 +362,75 @@
         try {
             const allFiles = await readDirectoryEntry(entry);
             currentFiles = allFiles;
-            entrySelect.innerHTML = "";
-            const xsds = Object.keys(allFiles).filter(n => n.endsWith('.xsd')).sort();
-            if (xsds.length === 0) {
-                resetDropZone("No .xsd files found in the folder.");
-                return;
-            }
-            xsds.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.innerText = name;
-                entrySelect.appendChild(opt);
-            });
-            entrySelect.disabled = false;
-            entryRow.style.display = '';
+            if (!populateEntrySelect(allFiles)) return;
             setActionsDisabled(!workerReady);
             status.innerText = "Folder listed. Select root XML schema and click Generate.";
         } catch (e) {
             resetDropZone(`Error reading folder: ${e.message}`);
+        }
+    }
+
+    function populateEntrySelect(allFiles) {
+        entrySelect.innerHTML = "";
+        const xsds = Object.keys(allFiles).filter(n => n.endsWith('.xsd')).sort();
+        if (xsds.length === 0) {
+            resetDropZone("No .xsd files found.");
+            return false;
+        }
+        xsds.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.innerText = name;
+            entrySelect.appendChild(opt);
+        });
+        entrySelect.disabled = false;
+        entryRow.style.display = '';
+        return true;
+    }
+
+    async function handleMultipleFlatFiles(files) {
+        currentFile = null;
+        currentFiles = null;
+        showSelection(`${files.length} files`);
+        status.innerText = "Reading files...";
+        try {
+            const allFiles = {};
+            for (const file of files) {
+                allFiles[file.name] = new Uint8Array(await file.arrayBuffer());
+            }
+            currentFiles = allFiles;
+            if (!populateEntrySelect(allFiles)) return;
+            setActionsDisabled(!workerReady);
+            status.innerText = "Files listed. Select root XML schema and click Generate.";
+        } catch (e) {
+            resetDropZone(`Error reading files: ${e.message}`);
+        }
+    }
+
+    async function handleMultipleEntries(entries) {
+        currentFile = null;
+        currentFiles = null;
+        showSelection(`${entries.length} items`);
+        status.innerText = "Reading files...";
+        try {
+            const allFiles = {};
+            for (const entry of entries) {
+                if (entry.isFile) {
+                    const file = await readEntryAsFile(entry);
+                    allFiles[entry.name] = new Uint8Array(await file.arrayBuffer());
+                } else if (entry.isDirectory) {
+                    const dirFiles = await readDirectoryEntry(entry);
+                    for (const [path, data] of Object.entries(dirFiles)) {
+                        allFiles[`${entry.name}/${path}`] = data;
+                    }
+                }
+            }
+            currentFiles = allFiles;
+            if (!populateEntrySelect(allFiles)) return;
+            setActionsDisabled(!workerReady);
+            status.innerText = "Files listed. Select root XML schema and click Generate.";
+        } catch (e) {
+            resetDropZone(`Error reading files: ${e.message}`);
         }
     }
 
@@ -448,7 +486,13 @@
     }
 
     zipInput.onchange = (e) => {
-        if (e.target.files[0]) handleFile(e.target.files[0]);
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        if (files.length === 1) {
+            handleFile(files[0]);
+        } else {
+            handleMultipleFlatFiles(Array.from(files));
+        }
     };
 
     // Drag & drop
@@ -473,16 +517,19 @@
         e.preventDefault();
         dragCounter = 0;
         dropZone.classList.remove('drag-over');
-        const item = e.dataTransfer.items && e.dataTransfer.items[0];
-        if (item && item.webkitGetAsEntry) {
-            const entry = item.webkitGetAsEntry();
-            if (entry && entry.isDirectory) {
-                handleDirectory(entry);
-                return;
+        const items = e.dataTransfer.items;
+        if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+            const entries = Array.from(items).map(item => item.webkitGetAsEntry()).filter(Boolean);
+            if (entries.length === 1) {
+                if (entries[0].isDirectory) { handleDirectory(entries[0]); return; }
+                const file = e.dataTransfer.files[0];
+                if (file) { handleFile(file); return; }
             }
+            if (entries.length > 1) { handleMultipleEntries(entries); return; }
         }
-        const file = e.dataTransfer.files[0];
-        if (file) handleFile(file);
+        const files = e.dataTransfer.files;
+        if (files.length === 1) handleFile(files[0]);
+        else if (files.length > 1) handleMultipleFlatFiles(Array.from(files));
     });
 
     // Prevent browser from opening dropped files outside the card
